@@ -1,0 +1,52 @@
+world:
+  size: 101                 # พิกัด -50..50 ทั้งแกน x และ y, ขอบวนรอบ (torus)
+  bot_count: 30
+  protection_hours: 72      # ชั่วโมงที่ 1x (หารด้วย speed)
+  round_days: 60            # วันที่ 1x (หารด้วย speed)
+  start_resources: {wood: 750, stone: 750, iron: 750, food: 750}
+  player_spawn_radius: 3
+  bot_spawn_min_radius: 5
+  bot_spawn_max_radius: 30
+  min_village_distance: 3
+  tile_weights:             # ใช้สุ่มชนิดช่อง รวม 100
+    valley_standard: 70     # layout 4-4-4-6
+    valley_food9: 4         # 3-3-3-9
+    valley_food15: 1        # 1-1-1-15
+    valley_other: 10        # สุ่มจาก other_layouts
+    oasis: 10
+    mountain: 3
+    lake: 2
+  other_layouts: ["5-4-3-6", "4-5-3-6", "3-4-5-6", "5-3-4-6", "4-3-5-6", "3-5-4-6"]
+
+economy:
+  production_level0: 2.0    # ทุ่งเลเวล 0 ผลิต 2/ชม.
+  production_base: 10.0     # P(1)
+  production_growth: 1.4    # P(L) = base * growth^(L-1)
+  storage_base: 800         # cap(L) = storage_base * storage_growth^L  (L=0 คือยังไม่สร้าง)
+  storage_growth: 1.25
+  hideout_base: 150         # hide(L) = hideout_base * hideout_growth^(L-1), L=0 -> 0
+  hideout_growth: 1.35
+  food_per_population: 1.0  # อาหาร/ชม. ต่อประชากร 1 คน
+
+construction:
+  cost_growth: 1.28
+  time_growth: 1.16
+  town_hall_time_factor: 0.05     # time /= (1 + 0.05*(T-1))
+  second_queue_town_hall_level: 10
+  training_building_factor: 0.9   # train_time *= 0.9^(L-1) ของอาคารที่ฝึก
+
+combat:
+  base_village_defense: 10
+  wall_bonus_per_level: 0.03
+  loss_exponent: 1.5
+  ram_per_level: 2          # ต้องใช้ ram ที่รอด 2*L ตัวเพื่อลดกำแพงจาก L เป็น L-1
+  catapult_per_level: 3
+  chief_loyalty_min: 20
+  chief_loyalty_max: 30
+  loyalty_regen_per_palace_level: 1.0   # ต่อชั่วโมงที่ 1x
+  scout_defense_ratio: 1.0
+
+culture:
+  # แต้มสะสมขั้นต่ำเพื่อมีหมู่บ้านที่ n (index 0 = หมู่บ้านแรก)
+  village_cp_thresholds: [0, 2000, 8000, 20000, 40000, 70000, 110000, 160000, 220000, 300000]
+  settlers_needed: 3

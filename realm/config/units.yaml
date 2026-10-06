@@ -1,0 +1,117 @@
+spearman:
+  name_th: ทหารหอก
+  type: inf
+  attack: 10
+  def_inf: 35
+  def_cav: 50
+  speed: 7
+  carry: 40
+  upkeep: 1
+  cost: {wood: 70, stone: 50, iron: 30, food: 50}
+  train_time_s: 600
+  trained_in: barracks
+  requires: {barracks: 1}
+swordsman:
+  name_th: ทหารดาบ
+  type: inf
+  attack: 40
+  def_inf: 20
+  def_cav: 15
+  speed: 6
+  carry: 50
+  upkeep: 1
+  cost: {wood: 60, stone: 40, iron: 110, food: 40}
+  train_time_s: 720
+  trained_in: barracks
+  requires: {barracks: 3, smithy: 1}
+scout:
+  name_th: หน่วยสอดแนม
+  type: scout
+  attack: 0
+  def_inf: 10
+  def_cav: 5
+  speed: 16
+  carry: 0
+  upkeep: 1
+  cost: {wood: 50, stone: 40, iron: 40, food: 40}
+  train_time_s: 500
+  trained_in: barracks
+  requires: {barracks: 1}
+light_cavalry:
+  name_th: ทหารม้าเบา
+  type: cav
+  attack: 60
+  def_inf: 20
+  def_cav: 10
+  speed: 14
+  carry: 80
+  upkeep: 2
+  cost: {wood: 160, stone: 140, iron: 220, food: 80}
+  train_time_s: 1200
+  trained_in: stable
+  requires: {stable: 1}
+heavy_cavalry:
+  name_th: ทหารม้าหนัก
+  type: cav
+  attack: 120
+  def_inf: 50
+  def_cav: 70
+  speed: 10
+  carry: 70
+  upkeep: 3
+  cost: {wood: 300, stone: 250, iron: 400, food: 150}
+  train_time_s: 1800
+  trained_in: stable
+  requires: {stable: 5}
+ram:
+  name_th: เครื่องกระทุ้ง
+  type: siege
+  attack: 60
+  def_inf: 30
+  def_cav: 60
+  speed: 4
+  carry: 0
+  upkeep: 3
+  cost: {wood: 400, stone: 300, iron: 200, food: 100}
+  train_time_s: 3000
+  trained_in: workshop
+  requires: {workshop: 1}
+catapult:
+  name_th: เครื่องยิงหิน
+  type: siege
+  attack: 70
+  def_inf: 20
+  def_cav: 10
+  speed: 3
+  carry: 0
+  upkeep: 6
+  cost: {wood: 500, stone: 600, iron: 350, food: 150}
+  train_time_s: 4500
+  trained_in: workshop
+  requires: {workshop: 5}
+chief:
+  name_th: ผู้นำ
+  type: special
+  attack: 40
+  def_inf: 50
+  def_cav: 40
+  speed: 4
+  carry: 0
+  upkeep: 4
+  cost: {wood: 7000, stone: 6000, iron: 7000, food: 5000}
+  train_time_s: 30000
+  trained_in: palace
+  requires: {palace: 15}
+settler:
+  name_th: ผู้บุกเบิก
+  type: special
+  attack: 0
+  def_inf: 80
+  def_cav: 80
+  speed: 5
+  carry: 3000
+  upkeep: 1
+  cost: {wood: 1500, stone: 1300, iron: 1200, food: 1000}
+  train_time_s: 10000
+  trained_in: palace
+  requires: {palace: 10}

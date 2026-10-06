@@ -1,0 +1,155 @@
+woodcutter:
+  name_th: ทุ่งตัดไม้
+  kind: field
+  produces: wood
+  max_level: 10
+  capital_max_level: 15
+  base_cost: {wood: 50, stone: 90, iron: 40, food: 50}
+  base_time_s: 240
+  pop_per_level: 1
+  cp_per_level: 1
+  requires: {}
+quarry:
+  name_th: เหมืองหิน
+  kind: field
+  produces: stone
+  max_level: 10
+  capital_max_level: 15
+  base_cost: {wood: 80, stone: 40, iron: 60, food: 50}
+  base_time_s: 240
+  pop_per_level: 1
+  cp_per_level: 1
+  requires: {}
+iron_mine:
+  name_th: เหมืองเหล็ก
+  kind: field
+  produces: iron
+  max_level: 10
+  capital_max_level: 15
+  base_cost: {wood: 90, stone: 80, iron: 30, food: 50}
+  base_time_s: 270
+  pop_per_level: 1
+  cp_per_level: 1
+  requires: {}
+farm:
+  name_th: ไร่นา
+  kind: field
+  produces: food
+  max_level: 10
+  capital_max_level: 15
+  base_cost: {wood: 60, stone: 70, iron: 50, food: 20}
+  base_time_s: 200
+  pop_per_level: 0
+  cp_per_level: 1
+  requires: {}
+town_hall:
+  name_th: ศาลากลาง
+  kind: fixed
+  fixed_slot: 19
+  max_level: 20
+  base_cost: {wood: 70, stone: 50, iron: 40, food: 60}
+  base_time_s: 600
+  pop_per_level: 2
+  cp_per_level: 2
+  requires: {}
+rally_point:
+  name_th: จุดรวมพล
+  kind: fixed
+  fixed_slot: 39
+  max_level: 20
+  base_cost: {wood: 100, stone: 80, iron: 60, food: 40}
+  base_time_s: 700
+  pop_per_level: 1
+  cp_per_level: 1
+  requires: {}
+wall:
+  name_th: กำแพง
+  kind: fixed
+  fixed_slot: 40
+  max_level: 20
+  base_cost: {wood: 100, stone: 180, iron: 80, food: 50}
+  base_time_s: 1200
+  pop_per_level: 0
+  cp_per_level: 1
+  requires: {}
+warehouse:
+  name_th: คลังสินค้า
+  kind: center
+  max_level: 20
+  base_cost: {wood: 120, stone: 140, iron: 80, food: 30}
+  base_time_s: 900
+  pop_per_level: 1
+  cp_per_level: 1
+  requires: {town_hall: 1}
+granary:
+  name_th: ยุ้งฉาง
+  kind: center
+  max_level: 20
+  base_cost: {wood: 80, stone: 120, iron: 60, food: 20}
+  base_time_s: 800
+  pop_per_level: 1
+  cp_per_level: 1
+  requires: {town_hall: 1}
+barracks:
+  name_th: ค่ายทหาร
+  kind: center
+  max_level: 20
+  base_cost: {wood: 200, stone: 160, iron: 140, food: 60}
+  base_time_s: 1500
+  pop_per_level: 2
+  cp_per_level: 2
+  requires: {town_hall: 3, rally_point: 1}
+smithy:
+  name_th: โรงตีเหล็ก
+  kind: center
+  max_level: 20
+  base_cost: {wood: 180, stone: 200, iron: 220, food: 80}
+  base_time_s: 1800
+  pop_per_level: 2
+  cp_per_level: 2
+  requires: {town_hall: 3, barracks: 1}
+stable:
+  name_th: คอกม้า
+  kind: center
+  max_level: 20
+  base_cost: {wood: 260, stone: 220, iron: 280, food: 100}
+  base_time_s: 2200
+  pop_per_level: 3
+  cp_per_level: 3
+  requires: {barracks: 3, smithy: 1}
+workshop:
+  name_th: โรงช่าง
+  kind: center
+  max_level: 20
+  base_cost: {wood: 400, stone: 300, iron: 350, food: 150}
+  base_time_s: 2700
+  pop_per_level: 3
+  cp_per_level: 3
+  requires: {town_hall: 5, smithy: 5}
+hideout:
+  name_th: ห้องลับ
+  kind: center
+  max_level: 10
+  base_cost: {wood: 40, stone: 50, iron: 30, food: 10}
+  base_time_s: 400
+  pop_per_level: 0
+  cp_per_level: 1
+  requires: {}
+marketplace:
+  name_th: ตลาด
+  kind: center
+  max_level: 20
+  base_cost: {wood: 80, stone: 70, iron: 120, food: 70}
+  base_time_s: 1500
+  pop_per_level: 2
+  cp_per_level: 3
+  requires: {town_hall: 3, warehouse: 1, granary: 1}
+palace:
+  name_th: วัง
+  kind: center
+  max_level: 20
+  base_cost: {wood: 600, stone: 700, iron: 500, food: 300}
+  base_time_s: 3600
+  pop_per_level: 4
+  cp_per_level: 5
+  requires: {town_hall: 5}

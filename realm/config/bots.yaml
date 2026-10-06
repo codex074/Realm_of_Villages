@@ -1,0 +1,55 @@
+difficulty_shares: {easy: 0.4, normal: 0.45, hard: 0.15}
+difficulties:
+  easy:   {think_interval_min: 60, max_actions: 1, skip_chance: 0.4, production_mult: 1.0, defend: false, spawn_min_radius: 5}
+  normal: {think_interval_min: 20, max_actions: 3, skip_chance: 0.1, production_mult: 1.0, defend: false, spawn_min_radius: 8}
+  hard:   {think_interval_min: 5,  max_actions: 6, skip_chance: 0.0, production_mult: 1.2, defend: true,  spawn_min_radius: 15}
+
+personalities:
+  farmer:
+    name_th: ชาวนา
+    share: 0.35
+    weights: {economy: 1.0, build: 1.0, storage: 1.0, military: 0.2, raid: 0.0, expand: 0.3}
+    army_hours: 2
+    unit_mix: {spearman: 1.0}
+    raid_radius: 0
+    active_from_day: 0
+    build_order: [warehouse:1, granary:1, rally_point:1, town_hall:3, barracks:1, warehouse:5, granary:5,
+                  town_hall:5, hideout:5, palace:1, warehouse:10, granary:10, palace:10]
+  turtle:
+    name_th: เต่า
+    share: 0.20
+    weights: {economy: 0.8, build: 1.2, storage: 1.0, military: 0.8, raid: 0.0, expand: 0.1}
+    army_hours: 6
+    unit_mix: {spearman: 0.8, swordsman: 0.2}
+    raid_radius: 0
+    active_from_day: 0
+    build_order: [rally_point:1, town_hall:3, barracks:1, wall:5, hideout:5, warehouse:5, granary:5,
+                  barracks:5, wall:10, hideout:10, wall:15]
+  raider:
+    name_th: นักปล้น
+    share: 0.20
+    weights: {economy: 0.7, build: 1.0, storage: 1.0, military: 1.2, raid: 1.5, expand: 0.2}
+    army_hours: 8
+    unit_mix: {light_cavalry: 0.7, swordsman: 0.3}
+    raid_radius: 12
+    active_from_day: 0
+    build_order: [rally_point:1, town_hall:3, barracks:3, smithy:1, warehouse:3, granary:3, stable:1,
+                  hideout:3, stable:5, warehouse:8, granary:8]
+  expander:
+    name_th: นักขยาย
+    share: 0.15
+    weights: {economy: 1.0, build: 1.2, storage: 1.0, military: 0.3, raid: 0.2, expand: 1.5}
+    army_hours: 2
+    unit_mix: {spearman: 1.0}
+    raid_radius: 6
+    active_from_day: 0
+    build_order: [rally_point:1, town_hall:5, warehouse:5, granary:5, palace:1, marketplace:1, palace:10]
+  warlord:
+    name_th: ขุนศึก
+    share: 0.10
+    weights: {economy: 0.8, build: 1.0, storage: 1.0, military: 1.5, raid: 1.2, expand: 0.5}
+    army_hours: 12
+    unit_mix: {swordsman: 0.4, heavy_cavalry: 0.4, ram: 0.1, catapult: 0.1}
+    raid_radius: 20
+    active_from_day: 10
+    build_order: [rally_point:1, town_hall:5, barracks:5, smithy:5, stable:5, workshop:1, palace:1, palace:15]

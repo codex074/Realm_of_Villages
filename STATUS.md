@@ -5,7 +5,7 @@
 | Task | สถานะ | ส่ง Qwen (ครั้ง) | หมายเหตุ |
 | --- | --- | --- | --- |
 | T00 | merged | 0 | Claude ทำเอง |
-| T01 | todo | 0 | Claude ทำเอง |
+| T01 | merged | 0 | Claude ทำเอง |
 | T02 | todo | 0 | |
 | T03 | todo | 0 | |
 

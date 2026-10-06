@@ -1,0 +1,30 @@
+stonehold:
+  name_th: อาณาจักรศิลา
+  description_th: เน้นตั้งรับ กำแพงแข็ง ทหารราบป้องกันเก่ง
+  modifiers:
+    wall_bonus_mult: 1.5
+    inf_defense_mult: 1.15   # คูณ def_inf และ def_cav ของหน่วย type inf
+    unit_cost_mult: 1.0
+    carry_mult: 1.0
+    cav_speed_mult: 1.0
+    hideout_mult: 1.0
+ironwild:
+  name_th: ชนเผ่าเหล็กป่า
+  description_th: เน้นบุกปล้น ทหารถูก ขนของได้มาก
+  modifiers:
+    wall_bonus_mult: 1.0
+    inf_defense_mult: 1.0
+    unit_cost_mult: 0.8
+    carry_mult: 1.25
+    cav_speed_mult: 1.0
+    hideout_mult: 1.0
+windriders:
+  name_th: สหพันธ์สายลม
+  description_th: เน้นความเร็ว ทหารม้าไว ห้องลับใหญ่
+  modifiers:
+    wall_bonus_mult: 1.0
+    inf_defense_mult: 1.0
+    unit_cost_mult: 1.0
+    carry_mult: 1.0
+    cav_speed_mult: 1.2
+    hideout_mult: 2.0
