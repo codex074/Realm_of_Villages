@@ -249,7 +249,7 @@ def rename_village(
     s.flush()
 
 
-def _brief(s: Session, village: Village, cfg: GameConfig) -> VillageBrief:
+def village_brief(s: Session, village: Village, cfg: GameConfig) -> VillageBrief:
     """Build a VillageBrief from a village row and its buildings."""
     pop = economy.population([(b.type, b.level) for b in _building_rows(s, village.id)], cfg)
     return VillageBrief(
@@ -315,7 +315,7 @@ def get_village_view(
         g["troop_ids"].append(t.id)
         g["units"][t.unit] = g["units"].get(t.unit, 0) + t.count
     for home_id, g in groups.items():
-        g["from_village"] = _brief(s, s.get(Village, home_id), cfg).model_dump(mode="json")
+        g["from_village"] = village_brief(s, s.get(Village, home_id), cfg).model_dump(mode="json")
         reinforcements_here.append(g)
     troops_away: list[dict] = []
     groups = {}
@@ -328,7 +328,7 @@ def get_village_view(
         g["units"][t.unit] = g["units"].get(t.unit, 0) + t.count
     for loc_id, g in groups.items():
         troops_away.append(
-            {"location": _brief(s, s.get(Village, loc_id), cfg).model_dump(mode="json"), **g}
+            {"location": village_brief(s, s.get(Village, loc_id), cfg).model_dump(mode="json"), **g}
         )
     training = [
         TrainingView(
@@ -355,7 +355,7 @@ def get_village_view(
                 id=m.id,
                 mission=m.mission,
                 direction="out",
-                from_village=_brief(s, village, cfg),
+                from_village=village_brief(s, village, cfg),
                 to=Coord(x=m.to_x, y=m.to_y),
                 to_village_name=(
                     s.get(Village, m.to_village_id).name if m.to_village_id is not None else None
@@ -375,7 +375,7 @@ def get_village_view(
                 id=m.id,
                 mission=m.mission,
                 direction="in",
-                from_village=_brief(s, sender, cfg),
+                from_village=village_brief(s, sender, cfg),
                 to=Coord(x=village.x, y=village.y),
                 to_village_name=village.name,
                 arrive_at=m.arrive_at,
@@ -386,7 +386,7 @@ def get_village_view(
     movements.sort(key=lambda mv: mv.arrive_at)
     return VillageView(
         game_now=now,
-        village=_brief(s, village, cfg),
+        village=village_brief(s, village, cfg),
         tribe=player.tribe,
         loyalty=village.loyalty,
         resources=Res(village.wood, village.stone, village.iron, village.food).to_dict(),
