@@ -1,0 +1,74 @@
+x-realm-app: &realm-app
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+  image: realm:latest
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: realm
+      POSTGRES_PASSWORD: realm
+      POSTGRES_DB: realm
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "realm", "-d", "realm"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  migrate:
+    <<: *realm-app
+    command: ["realm", "migrate"]
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    <<: *realm-app
+    command: ["realm", "api"]
+    env_file: .env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    expose:
+      - "8000"
+    restart: unless-stopped
+
+  engine:
+    <<: *realm-app
+    command: ["realm", "engine"]
+    env_file: .env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # bots arrives in Phase 1:
+  # bots:
+  #   <<: *realm-app
+  #   command: ["realm", "bots"]
+  #   env_file: .env
+  #   depends_on:
+  #     migrate:
+  #       condition: service_completed_successfully
+  #   restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    ports:
+      - "8080:80"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./web:/srv/web:ro
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  pgdata:
