@@ -1,0 +1,19 @@
+{
+  "id": "T02",
+  "title": "core: clock, economy, construction, slots",
+  "spec": ["199-221", "765-820"],
+  "read": ["realm/core/config.py", "realm/core/types.py"],
+  "write": [
+    "realm/core/clock.py",
+    "realm/core/economy.py",
+    "realm/core/construction.py",
+    "realm/core/slots.py",
+    "tests/core/test_clock.py",
+    "tests/core/test_economy.py",
+    "tests/core/test_construction.py",
+    "tests/core/test_slots.py"
+  ],
+  "test_cmd": "uv run pytest tests/core -q",
+  "criteria": "Implement every function in BUILD.md sections 4, 6.2, 6.3, 6.4 with EXACTLY the given names and signatures (these modules are pure: no DB, no Session). Tests must include at least these cases:\n- field_production(0)=2, (1)=10, (10)~206.6 (tolerance 0.1)\n- storage_capacity(0)=800, (1)=1000\n- settle: 100/h for 30 min -> +50; capped at capacity; food going negative is clamped at 0; now < updated_at -> unchanged\n- seconds_until_food_empty: stock 100, rate -50 -> 7200 (and None when rate >= 0)\n- building_cost('woodcutter', 2) == floor(base * 1.28) per resource\n- build_time_s with town_hall 1 vs 11 differs by exactly 1.5x; speed 10 is 10x faster; minimum 1 second\n- missing_requirements('stable', {'barracks': 3}) reports the missing smithy (Thai message)\n- field_types_for_layout('3-3-3-9') has 9 farm slots at slots 10..18\n- game_now is constant while paused; after resume it continues from the same point\n- initial_buildings: 18 fields level 0, town_hall level 1 at slot 19, rally_point level 0 at slot 39, wall level 0 at slot 40, no center rows\n- slot_accepts: field slot only accepts the matching field type, fixed slots only their building, center slots accept only kind=='center' buildings\nExpected numbers in tests must be computed by hand from the YAML values in realm/config/, never by calling the function under test.",
+  "notes": "- cfg is realm.core.config.GameConfig (cfg.economy.*, cfg.construction.*, cfg.buildings[btype]); load it in tests with realm.core.config.load_config().\n- Res lives in realm.core.types. gross_production's field_levels is an iterable of (building_type, level) for field buildings; sum per produces resource.\n- population(): accepts a Mapping[str,int] OR an iterable of (btype, level) pairs.\n- hideout_capacity needs cfg.tribes[tribe].modifiers.hideout_mult.\n- max_level(btype, is_capital, cfg): capital_max_level if is_capital and it is set, else max_level.\n- queue_limit: 2 when town_hall_level >= cfg.construction.second_queue_town_hall_level else 1.\n- building_cost must use math.floor (NOT round) on each resource.\n- missing_requirements returns Thai strings like 'ต้องมี ค่ายทหาร เลเวล 3' using the building name_th from cfg; iterate requires in dict order, and a requirement is missing when levels.get(key,0) < required level."
+}
