@@ -1,0 +1,18 @@
+{
+  "id": "T04a",
+  "title": "services: errors, events, notify, views",
+  "spec": ["971-1010", "1120-1163"],
+  "read": ["realm/db/models.py", "realm/core/types.py"],
+  "write": [
+    "realm/services/errors.py",
+    "realm/services/events.py",
+    "realm/services/notify.py",
+    "realm/services/views.py",
+    "tests/services/test_events.py",
+    "tests/services/test_notify.py",
+    "tests/services/test_views.py"
+  ],
+  "test_cmd": "uv run pytest tests/services -q -rs",
+  "criteria": "Implement exactly what BUILD.md sections 8.1-8.3 and 8.9 specify.\n- errors.py: `GameError(Exception)` with __init__(self, code: str, message: str) storing .code and .message (also pass message to super().__init__). Also define module constants for every code listed in the spec (NOT_FOUND = 'NOT_FOUND', ...).\n- events.py: `schedule(s, world_id, etype, due_at, payload) -> Event` (adds a pending Event, flushes, returns it; store etype.value as the type string) and `cancel_pending(s, world_id, etype, match: dict) -> int` (deletes PENDING events of that world and type whose JSONB payload contains every key/value of `match`; returns number deleted; use JSONB containment `Event.payload.contains(match)` or equivalent; events with status done/failed or of other types/worlds are untouched).\n- notify.py: `notify(s, world_id, player_ids, kind, village_id=None) -> None` executing `s.execute(select(func.pg_notify('game_events', payload_json)))` where payload_json = json.dumps({'world_id','player_ids','kind','village_id'}). Put the payload construction in a small helper `build_payload(...) -> str` so it can be unit-tested.\n- views.py: every pydantic model in 8.9 with the exact field names/types (Coord, VillageBrief, BuildingView, BuildQueueView, TrainingView, MovementView, VillageView, CostView, SlotView, TrainOption, SendPreview, MapTile, MapView, ReportSummary, ReportDetail, RankingRow, StateView). Import Units from realm.core.types.\nTests (tests/services/*): events: schedule stores pending row with right payload/due_at/type; cancel_pending removes only matching pending rows of the right type/world and returns the count; notify: build_payload round-trips through json.loads with the 4 keys, and calling notify(s, ...) on the test session raises no error; views: VillageView can be built with 40 BuildingView entries and serialises with model_dump(mode='json'); MovementView.units may be None; ReportDetail inherits ReportSummary fields.",
+  "notes": "- DB tests use the `s` fixture from tests/conftest.py (already exists). They need a World row first: create one directly with realm.db.models.World(seed=1, speed=1, size=101, created_at=t0, game_epoch=t0, ends_at=t0) using fixture `t0`; s.add + s.flush.\n- Event.created_at is NOT NULL and the service functions take no `now` parameter: set created_at=sqlalchemy.func.now() (a SQL expression) when creating the Event. NEVER call datetime.now() in realm/services.\n- realm/services/__init__.py already exists (empty). Do not edit it.\n- Python 3.12 typing: use `X | None`, `list[...]`, `dict[...]`; `from typing import Literal` for direction."
+}
