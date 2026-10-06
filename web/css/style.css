@@ -1,0 +1,295 @@
+/* Realm of Villages - mobile-first styles (min width 360px). */
+
+:root {
+  --bg: #f4f1ea;
+  --surface: #ffffff;
+  --text: #2b2b2b;
+  --muted: #6b6b6b;
+  --border: #d8d3c8;
+  --primary: #4a6fa5;
+  --danger: #b3402f;
+  --wood: #8b5a2b;
+  --stone: #8a8f98;
+  --iron: #4a6fa5;
+  --food: #6a994e;
+  --topbar-h: 48px;
+  --bottomnav-h: 52px;
+  --radius: 10px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: system-ui, 'Noto Sans Thai', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ---------- Top bar ---------- */
+
+#topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  z-index: 10;
+}
+
+#resources {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.res {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 13px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.res-wood { color: var(--wood); }
+.res-stone { color: var(--stone); }
+.res-iron { color: var(--iron); }
+.res-food { color: var(--food); }
+
+#clock {
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+#village-select {
+  max-width: 110px;
+  font: inherit;
+  font-size: 13px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+/* ---------- Content ---------- */
+
+#view {
+  padding: calc(var(--topbar-h) + 12px) 12px calc(var(--bottomnav-h) + 16px);
+  min-height: 100vh;
+}
+
+/* ---------- Bottom nav ---------- */
+
+#bottomnav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--bottomnav-h);
+  display: flex;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  z-index: 10;
+}
+
+.nav-link {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.nav-link.active {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* ---------- Toast ---------- */
+
+#toast {
+  position: fixed;
+  bottom: calc(var(--bottomnav-h) + 12px);
+  left: 12px;
+  right: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: #333;
+  color: #fff;
+  font-size: 14px;
+  z-index: 20;
+  text-align: center;
+}
+
+#toast.toast-error {
+  background: var(--danger);
+}
+
+/* ---------- Buttons ---------- */
+
+.btn {
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.btn-danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+/* ---------- Panel ---------- */
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.negative {
+  color: var(--danger);
+}
+
+/* ---------- Village slot grid (6 x 3) ---------- */
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.slot {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  overflow: hidden;
+}
+
+.slot .slot-level {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.slot .slot-label {
+  font-size: 10px;
+}
+
+.slot.wood { background: var(--wood); color: #fff; border-color: var(--wood); }
+.slot.stone { background: var(--stone); color: #fff; border-color: var(--stone); }
+.slot.iron { background: var(--iron); color: #fff; border-color: var(--iron); }
+.slot.food { background: var(--food); color: #fff; border-color: var(--food); }
+
+.slot.empty {
+  border-style: dashed;
+  color: var(--muted);
+}
+
+.slot.building::after {
+  content: '🔨';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 11px;
+}
+
+/* ---------- Center grid (4 columns) ---------- */
+
+.center-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+/* ---------- Bottom sheet ---------- */
+
+.bottom-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--bottomnav-h);
+  max-height: 70vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
+  padding: 14px;
+  z-index: 15;
+  transform: translateY(0);
+  transition: transform 0.2s ease;
+}
+
+.bottom-sheet.hidden {
+  transform: translateY(100%);
+}
+
+/* ---------- Lists ---------- */
+
+.list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.list-row:last-child {
+  border-bottom: none;
+}
+
+/* ---------- Misc ---------- */
+
+.countdown {
+  font-family: ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}

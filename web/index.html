@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Realm of Villages</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header id="topbar">
+    <div id="resources">
+      <span class="res res-wood"><span class="res-icon">🪵</span><span id="res-wood">0</span></span>
+      <span class="res res-stone"><span class="res-icon">🪨</span><span id="res-stone">0</span></span>
+      <span class="res res-iron"><span class="res-icon">⛏️</span><span id="res-iron">0</span></span>
+      <span class="res res-food"><span class="res-icon">🌾</span><span id="res-food">0</span></span>
+    </div>
+    <div id="clock"></div>
+    <button id="pause-btn" class="btn">หยุด</button>
+    <select id="village-select"></select>
+  </header>
+
+  <main id="view"></main>
+
+  <nav id="bottomnav">
+    <a class="nav-link" href="#/">หมู่บ้าน</a>
+    <a class="nav-link" href="#/center">ใจกลาง</a>
+    <a class="nav-link" href="#/map">แผนที่</a>
+    <a class="nav-link" href="#/reports">รายงาน</a>
+    <a class="nav-link" href="#/ranking">อันดับ</a>
+  </nav>
+
+  <div id="toast" hidden></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
