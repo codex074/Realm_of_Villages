@@ -19,7 +19,7 @@
 | T07a | merged | 1 | JS ถูกต้อง; Claude แก้คำไทยผิด 2 จุด (แผนท่ี, อับดับ) |
 | T07b | merged | 1 | Claude แก้ 2 จุดใน app.js (interval ซ้ำ, villageId ตอนไม่มี id); ทดสอบในเบราว์เซอร์จริงผ่าน |
 | T07c | merged | 1 | Claude แก้คำไทยผิด ~8 จุด + bug container ของ slot panel + null guard ใน app.js; ทดสอบในเบราว์เซอร์จริงผ่าน (desktop+mobile) |
-| T08 | todo | 0 | |
+| T08 | in-review | 1 | ไฟล์ถูกต้อง; Claude แก้ healthcheck (ขาด "CMD"); ตรวจ `docker compose config` ผ่านแล้ว; ยังไม่ได้ build/รันจริง (รอผู้ใช้อนุญาตดึง image) |
 
 สถานะที่ใช้: todo · delegated · in-review · merged · blocked · claude-fallback
 
@@ -34,6 +34,7 @@
 ## บทเรียนจาก Qwen (ใส่ใน notes ของ task ถัดไป)
 - ต้องเรียก Qwen ด้วย env สะอาด (wrapper ทำให้แล้ว) ไม่งั้น "Not logged in"
 - JSONB server_default ต้องเป็น text("'{}'::jsonb") ไม่ใช่สตริง "{}::jsonb" (Qwen พลาดใน T03a)
+- Qwen ลืม "CMD" ใน healthcheck.test ของ compose; test_cmd ที่ใช้ python ต้องเรียกผ่าน `uv run` (python3 ระบบเป็น 3.9 ไม่มี yaml)
 - Qwen ใส่ "บ่าน" แทน "บ้าน", "เปลี่ี่ยน", "ท่ี" ซ้ำๆ: ใส่ในโจทย์ให้คัดลอกสตริงไทยตามที่ระบุเป๊ะ และรัน scripts/check_thai.py + อ่านทวนทุกครั้ง
 - Qwen สลับ/พิมพ์ตัวอักษรไทยผิดได้ (เช่น "อับดับ" แทน "อันดับ") ที่ regex จับไม่ได้ ต้องอ่านสตริงไทยทุกตัวเอง
 - Qwen ชอบพิมพ์วรรณยุกต์/สระซ้ำในสตริงไทย (เช่น "น้ี", "แล้้ว") ตรวจด้วยสคริปต์ regex หลังทุก task (ดู scripts/check_thai.py)
