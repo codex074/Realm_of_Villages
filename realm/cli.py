@@ -1,8 +1,11 @@
 """Command line entry point: `realm <command>`."""
 
+from datetime import UTC, datetime
 from pathlib import Path
 
 import typer
+
+from realm.db.session import session_scope
 
 app = typer.Typer(help="Realm of Villages", no_args_is_help=True)
 
@@ -27,15 +30,43 @@ def migrate() -> None:
 
 
 @app.command("new-world")
-def new_world() -> None:
+def new_world(
+    speed: int = typer.Option(1, "--speed", help="World speed multiplier."),
+    name: str = typer.Option("ผู้เล่น", "--name", help="Human player name."),
+    tribe: str = typer.Option("stonehold", "--tribe", help="Player tribe."),
+    bots: int = typer.Option(30, "--bots", help="Number of bot players."),
+    seed: int | None = typer.Option(None, "--seed", help="World seed (random if omitted)."),
+) -> None:
     """Create a new world."""
-    _todo()
+    import random
+
+    from realm.core.config import load_config
+    from realm.services import worlds
+
+    with session_scope() as s:
+        world = worlds.create_world(
+            s,
+            seed=seed if seed is not None else random.randrange(1, 2**31),
+            speed=speed,
+            player_name=name,
+            tribe=tribe,
+            bot_count=bots,
+            cfg=load_config(),
+            real_now=datetime.now(UTC),
+        )
+    typer.echo(f"world {world.id} created (speed={world.speed}, seed={world.seed})")
 
 
 @app.command()
 def api() -> None:
     """Run the HTTP API."""
-    _todo()
+    import uvicorn
+
+    from realm.settings import settings
+
+    uvicorn.run(
+        "realm.api.main:create_app", factory=True, host=settings.api_host, port=settings.api_port
+    )
 
 
 @app.command()
@@ -56,13 +87,21 @@ def bots() -> None:
 @app.command()
 def pause() -> None:
     """Pause the world clock."""
-    _todo()
+    from realm.services import worlds
+
+    with session_scope() as s:
+        worlds.pause(s, datetime.now(UTC))
+    typer.echo("paused")
 
 
 @app.command()
 def resume() -> None:
     """Resume the world clock."""
-    _todo()
+    from realm.services import worlds
+
+    with session_scope() as s:
+        worlds.resume(s, datetime.now(UTC))
+    typer.echo("resumed")
 
 
 @app.command()

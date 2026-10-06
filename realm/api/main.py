@@ -1,11 +1,14 @@
 """FastAPI application factory for the Realm of Villages API (BUILD.md section 9)."""
 
+import asyncio
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from realm.api import ws
 from realm.api.routes import admin, state, villages
 from realm.services.errors import FORBIDDEN, NOT_FOUND, WORLD_ENDED, GameError
 
@@ -16,9 +19,23 @@ _STATUS_BY_CODE = {
 }
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Start the game_events listener task on startup and cancel it on shutdown."""
+    task = asyncio.create_task(ws.listen_loop())
+    try:
+        yield
+    finally:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
+
 def create_app(serve_static: bool = True) -> FastAPI:
     """Build the FastAPI app with the /api routers and optional static web mount."""
-    app = FastAPI(title="Realm of Villages")
+    app = FastAPI(title="Realm of Villages", lifespan=lifespan)
 
     @app.exception_handler(GameError)
     async def game_error_handler(request: Request, exc: GameError) -> JSONResponse:
@@ -27,6 +44,7 @@ def create_app(serve_static: bool = True) -> FastAPI:
         body = {"error": {"code": exc.code, "message": exc.message}}
         return JSONResponse(status_code=status, content=body)
 
+    app.include_router(ws.router)
     app.include_router(state.router, prefix="/api")
     app.include_router(villages.router, prefix="/api")
     app.include_router(admin.router, prefix="/api")
