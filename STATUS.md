@@ -17,8 +17,8 @@
 | T06a | merged | 1 | ผ่านรอบแรก ไม่ต้องแก้ (ครั้งแรกส่งไม่สำเร็จเพราะสคริปต์ผมเอง ไม่นับ) |
 | T06b | merged | 1 | ผ่านรอบแรก ไม่ต้องแก้; ทดสอบ E2E จริง (API+engine+WS) ผ่าน |
 | T07a | merged | 1 | JS ถูกต้อง; Claude แก้คำไทยผิด 2 จุด (แผนท่ี, อับดับ) |
-| T07b | todo | 0 | web: app.js + newgame.js |
-| T07c | todo | 0 | web: village.js + center.js |
+| T07b | merged | 1 | Claude แก้ 2 จุดใน app.js (interval ซ้ำ, villageId ตอนไม่มี id); ทดสอบในเบราว์เซอร์จริงผ่าน |
+| T07c | merged | 1 | Claude แก้คำไทยผิด ~8 จุด + bug container ของ slot panel + null guard ใน app.js; ทดสอบในเบราว์เซอร์จริงผ่าน (desktop+mobile) |
 | T08 | todo | 0 | |
 
 สถานะที่ใช้: todo · delegated · in-review · merged · blocked · claude-fallback
@@ -34,6 +34,7 @@
 ## บทเรียนจาก Qwen (ใส่ใน notes ของ task ถัดไป)
 - ต้องเรียก Qwen ด้วย env สะอาด (wrapper ทำให้แล้ว) ไม่งั้น "Not logged in"
 - JSONB server_default ต้องเป็น text("'{}'::jsonb") ไม่ใช่สตริง "{}::jsonb" (Qwen พลาดใน T03a)
+- Qwen ใส่ "บ่าน" แทน "บ้าน", "เปลี่ี่ยน", "ท่ี" ซ้ำๆ: ใส่ในโจทย์ให้คัดลอกสตริงไทยตามที่ระบุเป๊ะ และรัน scripts/check_thai.py + อ่านทวนทุกครั้ง
 - Qwen สลับ/พิมพ์ตัวอักษรไทยผิดได้ (เช่น "อับดับ" แทน "อันดับ") ที่ regex จับไม่ได้ ต้องอ่านสตริงไทยทุกตัวเอง
 - Qwen ชอบพิมพ์วรรณยุกต์/สระซ้ำในสตริงไทย (เช่น "น้ี", "แล้้ว") ตรวจด้วยสคริปต์ regex หลังทุก task (ดู scripts/check_thai.py)
 - ข้อความไทยที่ Qwen เขียนมักมีคำเพี้ยน/พิมพ์ผิด: ต้องอ่านทุกสตริงไทยตอนรีวิว และใส่ใน notes ให้ใช้ถ้อยคำสั้นๆ ง่ายๆ
