@@ -1,0 +1,18 @@
+{
+  "id": "T03b",
+  "title": "db: alembic migration, test fixtures, migrate command",
+  "spec": ["925-969", "1343-1362"],
+  "read": ["realm/db/models.py", "realm/db/session.py", "realm/settings.py", "realm/cli.py"],
+  "write": [
+    "alembic.ini",
+    "realm/db/migrations/env.py",
+    "realm/db/migrations/script.py.mako",
+    "realm/db/migrations/versions/0001_initial.py",
+    "tests/conftest.py",
+    "tests/services/test_db_smoke.py",
+    "realm/cli.py"
+  ],
+  "test_cmd": "uv run pytest -q -rs",
+  "criteria": "1) Hand-written alembic migration versions/0001_initial.py (revision '0001', down_revision None) creating all 12 tables, columns, defaults, FKs, unique constraints and indexes EXACTLY as declared in realm/db/models.py (same names, server defaults, index names). Use op.create_table / op.create_index and a downgrade that drops everything in reverse FK order. Do NOT use autogenerate.\n2) alembic.ini at repo root with script_location = %(here)s/realm/db/migrations and no hard-coded DB URL. realm/db/migrations/env.py: online + offline mode, target_metadata = Base.metadata, URL taken from config.get_main_option('sqlalchemy.url') if set, else realm.settings.settings.database_url. script.py.mako: standard template.\n3) `realm migrate` in realm/cli.py runs `alembic upgrade head` through alembic's Python API (alembic.config.Config + alembic.command.upgrade): Config(str(Path(__file__).resolve().parents[1] / 'alembic.ini')), URL from settings. Keep every other CLI command exactly as-is (still 'not implemented').\n4) tests/conftest.py: reads REALM_TEST_DATABASE_URL (default postgresql+psycopg://realm_test:realm_test@localhost:5433/realm_test). Fixtures: `db_engine` (session scope): if the DB cannot be reached -> pytest.skip with a message telling to run `docker compose -f docker-compose.test.yml up -d`; otherwise DROP SCHEMA public CASCADE + CREATE SCHEMA public, then run alembic upgrade head against the test URL (set sqlalchemy.url on the Config), yield the engine. `s` (function scope): open a connection, begin an outer transaction, create Session(bind=conn, join_transaction_mode='create_savepoint'), yield it, then close session, rollback the outer transaction and close the connection. `cfg`: realm.core.config.load_config(). `t0`: datetime(2026, 1, 1, tzinfo=timezone.utc). Only DB-using fixtures may skip; non-DB tests must still run.\n5) tests/services/test_db_smoke.py (uses fixture `s`): insert world -> player -> village -> building and query them back; inserting a second village at the same (world_id,x,y) raises sqlalchemy.exc.IntegrityError (use s.begin_nested() so the outer test transaction stays usable); events default status 'pending' and attempts 0; world default status 'running'; bot_profiles.memory default {} ; a downgrade/upgrade round trip is NOT required.\nThe Postgres test DB is already running on localhost:5433, so DB tests must actually RUN (not be skipped) — check the -rs output.",
+  "notes": "- psycopg3 URL form: postgresql+psycopg://...\n- Use sa.text(\"'{}'::jsonb\") for the JSONB '{}' server defaults in the migration (a plain string '{}::jsonb' is WRONG).\n- Timestamps: sa.DateTime(timezone=True); resources: sa.Double() (or postgresql.DOUBLE_PRECISION); JSONB: postgresql.JSONB; ids: sa.BigInteger() with autoincrement=True on the primary key.\n- Existing tests/conftest.py is empty; tests/test_smoke.py and tests/core must keep passing.\n- Index with DESC: op.create_index('ix_reports_player_id_created_at', 'reports', ['player_id', sa.text('created_at DESC')]).\n- A sanity check you can run: `uv run realm migrate` against a fresh DB is NOT needed; only the pytest run."
+}

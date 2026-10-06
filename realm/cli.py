@@ -1,5 +1,7 @@
 """Command line entry point: `realm <command>`."""
 
+from pathlib import Path
+
 import typer
 
 app = typer.Typer(help="Realm of Villages", no_args_is_help=True)
@@ -11,8 +13,17 @@ def _todo() -> None:
 
 @app.command()
 def migrate() -> None:
-    """Run database migrations."""
-    _todo()
+    """Run database migrations (alembic upgrade head)."""
+    from alembic import command
+    from alembic.config import Config
+
+    from realm.settings import settings
+
+    ini_path = Path(__file__).resolve().parents[1] / "alembic.ini"
+    cfg = Config(str(ini_path))
+    cfg.set_main_option("sqlalchemy.url", settings.database_url)
+    command.upgrade(cfg, "head")
+    typer.echo("migrations applied")
 
 
 @app.command("new-world")
