@@ -212,7 +212,7 @@ def _parse_build_order(entries: list[str]) -> list[tuple[str, int]]:
 @lru_cache
 def load_config(config_dir: str | Path | None = None) -> GameConfig:
     """Load and validate all YAML files; None uses settings.config_dir."""
-    base = Path(config_dir) if config_dir is not None else get_settings().config_dir
+    base = Path(config_dir if config_dir is not None else get_settings().config_dir)
     game = _read(base / "game.yaml")
     bots = _read(base / "bots.yaml")
     personalities = _with_keys(bots["personalities"])
