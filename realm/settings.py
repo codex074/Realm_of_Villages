@@ -8,12 +8,17 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Process-level settings; game balance lives in realm/config/*.yaml."""
 
-    model_config = SettingsConfigDict(env_prefix="REALM_", env_file=".env", extra="ignore")
-
     database_url: str = "postgresql+psycopg://realm:realm@localhost:5432/realm"
-    config_dir: Path = Path(__file__).parent / "config"
+    config_dir: str = str(Path(__file__).parent / "config")
+    log_level: str = "INFO"
+    api_host: str = "0.0.0.0"
+    api_port: int = 8000
+    model_config = SettingsConfigDict(env_prefix="REALM_", env_file=".env", extra="ignore")
 
 
 def get_settings() -> Settings:
     """Return settings read from the current environment."""
     return Settings()
+
+
+settings = Settings()
