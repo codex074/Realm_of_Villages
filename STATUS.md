@@ -12,7 +12,7 @@
 | T04a | merged | 1 | errors/events/notify/views; Claude แก้ docstring 1 บรรทัด |
 | T04b | merged | 1 | Claude แก้ข้อความไทยที่ Qwen พิมพ์เพี้ยน 2 จุด |
 | T04c | merged | 1 | logic ถูกต้องตั้งแต่รอบแรก; Claude แก้สตริงไทย 4 ตัวที่มีวรรณยุกต์ซ้ำ (น้ี, แล้้ว ฯลฯ) |
-| T04d | todo | 0 | villages: get_village_view/get_slot_view |
+| T04d | merged | 1 | ผ่านรอบแรก ไม่ต้องแก้; ฟังก์ชันเดิมไม่ถูกแก้ |
 | T05 | todo | 0 | |
 | T06 | todo | 0 | |
 | T07 | todo | 0 | |
