@@ -293,3 +293,134 @@ body {
   font-family: ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
 }
+
+/* app shell + newgame */
+
+/* ---------- App shell ---------- */
+
+#topbar .res.negative,
+#toast .negative {
+  color: var(--danger);
+}
+
+#village-select[hidden] {
+  display: none;
+}
+
+#pause-btn {
+  min-width: 72px;
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+/* ---------- New game form ---------- */
+
+.newgame {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.newgame-title {
+  font-size: 24px;
+  margin: 0 0 4px;
+  text-align: center;
+}
+
+.newgame-subtitle {
+  color: var(--muted);
+  text-align: center;
+  margin: 0 0 16px;
+}
+
+.newgame-form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+}
+
+.form-row {
+  display: block;
+  margin-bottom: 14px;
+}
+
+.form-row:last-child {
+  margin-bottom: 0;
+}
+
+.form-row-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.form-row-inline > input,
+.form-row-inline > select {
+  flex: 1;
+}
+
+.form-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.form-row-inline .form-label {
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+
+.newgame-form input[type='text'],
+.newgame-form input[type='number'],
+.newgame-form select {
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.newgame-form .btn {
+  width: 100%;
+}
+
+/* ---------- Tribe cards ---------- */
+
+.tribe-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tribe-card {
+  display: block;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  cursor: pointer;
+  background: var(--bg);
+}
+
+.tribe-card input[type='radio'] {
+  margin-right: 6px;
+}
+
+.tribe-card.selected {
+  border-color: var(--primary);
+  background: #eef3fa;
+}
+
+.tribe-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.tribe-desc {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 2px;
+}
