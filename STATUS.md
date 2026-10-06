@@ -9,6 +9,14 @@
 | T02 | merged | 1 | Qwen ผ่านรอบแรก ไม่ต้องแก้ |
 | T03a | merged | 1 | models+session; Claude แก้ server_default JSONB 2 จุด |
 | T03b | merged | 1 | ผ่านรอบแรก; ตรวจ migration เทียบ models ด้วย alembic compare_metadata ไม่มี diff |
+| T04a | merged | 1 | errors/events/notify/views; Claude แก้ docstring 1 บรรทัด |
+| T04b | todo | 0 | worlds Phase 0 |
+| T04c | todo | 0 | villages: คำสั่ง (build/complete/settle/after_change) |
+| T04d | todo | 0 | villages: get_village_view/get_slot_view |
+| T05 | todo | 0 | |
+| T06 | todo | 0 | |
+| T07 | todo | 0 | |
+| T08 | todo | 0 | |
 
 สถานะที่ใช้: todo · delegated · in-review · merged · blocked · claude-fallback
 
