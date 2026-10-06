@@ -7,7 +7,8 @@
 | T00 | merged | 0 | Claude ทำเอง |
 | T01 | merged | 0 | Claude ทำเอง |
 | T02 | merged | 1 | Qwen ผ่านรอบแรก ไม่ต้องแก้ |
-| T03 | todo | 0 | |
+| T03a | merged | 1 | models+session; Claude แก้ server_default JSONB 2 จุด |
+| T03b | todo | 0 | alembic, migration, conftest, test, cli migrate |
 
 สถานะที่ใช้: todo · delegated · in-review · merged · blocked · claude-fallback
 
@@ -21,4 +22,5 @@
 
 ## บทเรียนจาก Qwen (ใส่ใน notes ของ task ถัดไป)
 - ต้องเรียก Qwen ด้วย env สะอาด (wrapper ทำให้แล้ว) ไม่งั้น "Not logged in"
+- JSONB server_default ต้องเป็น text("'{}'::jsonb") ไม่ใช่สตริง "{}::jsonb" (Qwen พลาดใน T03a)
 - T02: ไม่พบข้อผิดพลาดซ้ำ ตัวเลข test คำนวณมือถูกต้อง
