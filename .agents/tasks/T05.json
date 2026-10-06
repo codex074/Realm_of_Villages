@@ -1,0 +1,24 @@
+{
+  "id": "T05",
+  "title": "engine: worker + BUILD_COMPLETE handler",
+  "spec": ["1389-1421", "989-1003"],
+  "read": [
+    "realm/db/models.py",
+    "realm/db/session.py",
+    "realm/core/types.py",
+    "realm/services/events.py",
+    "realm/services/worlds.py",
+    "realm/services/villages.py",
+    "realm/cli.py",
+    "tests/conftest.py"
+  ],
+  "write": [
+    "realm/engine/handlers.py",
+    "realm/engine/worker.py",
+    "realm/cli.py",
+    "tests/engine/test_worker.py"
+  ],
+  "test_cmd": "uv run pytest tests -q -rs",
+  "criteria": "Implement the engine per BUILD.md T05.\n- realm/engine/handlers.py: `Handler = Callable[[Session, Event, GameConfig], None]`; `handle_build_complete(s, ev, cfg)` calls villages.complete_build(s, ev.payload['build_queue_id'], ev.due_at, cfg) (the handler ALWAYS uses ev.due_at as `now`, never the real clock); stubs for TRAIN_TICK, MOVEMENT_ARRIVE and ROUND_END that `raise NotImplementedError('<task> not implemented yet')` (name the future task: T11, T13, T14); `handle_starvation_check` is a NO-OP that only logs at DEBUG (a later task fills it); `HANDLERS: dict[EventType, Handler]` containing all 5 event types.\n- realm/engine/worker.py: `process_next(s, world, now, cfg) -> bool`: select the Event of this world with status 'pending' and due_at <= now ordered by due_at, id, LIMIT 1, FOR UPDATE SKIP LOCKED; none -> return False; otherwise run HANDLERS[EventType(ev.type)](s, ev, cfg) inside `with s.begin_nested():` (a savepoint); on success set ev.status='done'; if the handler raises ANY Exception the savepoint rolls back the handler's changes, then set ev.status='failed', ev.attempts += 1, ev.last_error = repr(exception)[:2000], log with logger.exception, and still return True; flush; log INFO for every completed event: type, id and elapsed ms. `run_forever(cfg, idle_sleep: float = 0.5) -> None`: loop until a stop flag is set by SIGTERM/SIGINT handlers (graceful shutdown: finish the current event then exit); each iteration opens ONE transaction with realm.db.session.session_scope(), loads the newest world with status 'running' (skip when none, or when world.paused_at is not None), computes now = worlds.world_now(world, datetime.now(timezone.utc)) (datetime.now is allowed here), calls process_next once; when it returned False or no world -> time.sleep(idle_sleep); any unexpected exception (e.g. DB down) is logged and followed by time.sleep(1.0), the loop continues. Configure logging with logging.basicConfig(level=settings.log_level) at the start of run_forever.\n- realm/cli.py: the `engine` command calls run_forever(load_config()); ALL other commands stay exactly as they are.\nTests tests/engine/test_worker.py (fixtures `s`, `cfg`, `t0`; world from realm.services.worlds.create_world(s, seed=1, speed=1, player_name='ผู้เล่น', tribe='stonehold', bot_count=0, cfg=cfg, real_now=t0)):\n- villages.build woodcutter slot 1 at t0 (finishes t0+240s): process_next(now=t0+239s) -> False and the level is still 0; process_next(now=t0+240s) -> True, building slot 1 level 1, build_queue row gone, event status 'done'; calling again -> False.\n- the handler uses ev.due_at: process_next(now=t0+1000s) after building -> village.res_updated_at == t0+240s (not t0+1000s).\n- ordering: monkeypatch HANDLERS[EventType.BUILD_COMPLETE] with a recorder; schedule 3 events with due_at t0+30s (payload n=1), t0+10s (n=2), t0+20s (n=3) in that insertion order, plus one more with due_at t0+10s inserted later (n=4); process until False with now=t0+60s -> recorded order n=2, n=4, n=3, n=1.\n- failing handler: monkeypatch BUILD_COMPLETE handler that first changes world.speed to 99 then raises ValueError('boom'): process_next returns True, event.status == 'failed', attempts == 1, 'boom' in last_error, world.speed is NOT 99 (savepoint rolled back), and the session is still usable (a following query works) and a second pending event is still processed normally afterwards.\n- events of another world are not processed; events not yet due are not processed.\n- an unimplemented handler (MOVEMENT_ARRIVE) -> event ends 'failed' with 'not implemented' in last_error; a STARVATION_CHECK event ends 'done'.\nKeep the test file readable with small helpers.",
+  "notes": "- monkeypatch HANDLERS with monkeypatch.setitem(HANDLERS, EventType.BUILD_COMPLETE, fn) so process_next sees it (look the handler up in the HANDLERS dict at call time).\n- Use `logging.getLogger('realm.engine')` in worker.py; no print().\n- s.begin_nested() works because tests/conftest.py's `s` session joins an outer transaction with savepoints.\n- Events: realm.db.models.Event (type stored as the EventType value string). Create test events with realm.services.events.schedule(s, world.id, EventType.X, due_at, payload).\n- Thai text is not needed in this task; if you add any, double-check tone marks.\n- cli.py `engine` should import run_forever and load_config lazily inside the function (keeps `realm --help` fast)."
+}

@@ -41,7 +41,10 @@ def api() -> None:
 @app.command()
 def engine() -> None:
     """Run the event engine."""
-    _todo()
+    from realm.core.config import load_config
+    from realm.engine.worker import run_forever
+
+    run_forever(load_config())
 
 
 @app.command()
