@@ -10,7 +10,7 @@
 | T03a | merged | 1 | models+session; Claude แก้ server_default JSONB 2 จุด |
 | T03b | merged | 1 | ผ่านรอบแรก; ตรวจ migration เทียบ models ด้วย alembic compare_metadata ไม่มี diff |
 | T04a | merged | 1 | errors/events/notify/views; Claude แก้ docstring 1 บรรทัด |
-| T04b | todo | 0 | worlds Phase 0 |
+| T04b | merged | 1 | Claude แก้ข้อความไทยที่ Qwen พิมพ์เพี้ยน 2 จุด |
 | T04c | todo | 0 | villages: คำสั่ง (build/complete/settle/after_change) |
 | T04d | todo | 0 | villages: get_village_view/get_slot_view |
 | T05 | todo | 0 | |
@@ -31,4 +31,5 @@
 ## บทเรียนจาก Qwen (ใส่ใน notes ของ task ถัดไป)
 - ต้องเรียก Qwen ด้วย env สะอาด (wrapper ทำให้แล้ว) ไม่งั้น "Not logged in"
 - JSONB server_default ต้องเป็น text("'{}'::jsonb") ไม่ใช่สตริง "{}::jsonb" (Qwen พลาดใน T03a)
+- ข้อความไทยที่ Qwen เขียนมักมีคำเพี้ยน/พิมพ์ผิด: ต้องอ่านทุกสตริงไทยตอนรีวิว และใส่ใน notes ให้ใช้ถ้อยคำสั้นๆ ง่ายๆ
 - T02: ไม่พบข้อผิดพลาดซ้ำ ตัวเลข test คำนวณมือถูกต้อง
