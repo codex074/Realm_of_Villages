@@ -8,7 +8,7 @@
 | T01 | merged | 0 | Claude ทำเอง |
 | T02 | merged | 1 | Qwen ผ่านรอบแรก ไม่ต้องแก้ |
 | T03a | merged | 1 | models+session; Claude แก้ server_default JSONB 2 จุด |
-| T03b | todo | 0 | alembic, migration, conftest, test, cli migrate |
+| T03b | merged | 1 | ผ่านรอบแรก; ตรวจ migration เทียบ models ด้วย alembic compare_metadata ไม่มี diff |
 
 สถานะที่ใช้: todo · delegated · in-review · merged · blocked · claude-fallback
 
