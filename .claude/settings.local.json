@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/codex/**)",
+      "Bash(env)",
+      "Bash(grep -E \"^\\(uv|python3\\\\.1[0-9]|brew|pipx|ruff\\)$\")",
+      "Bash(docker info *)",
+      "Bash(sed 's/\\\\\\(\"[A-Za-z_]*\\\\\\(KEY\\\\|TOKEN\\\\\\)[A-Za-z_]*\"\\\\\\): *\"[^\"]*\"/\\\\1: \"***\"/')",
+      "Bash(git --version)"
+    ]
+  }
+}
