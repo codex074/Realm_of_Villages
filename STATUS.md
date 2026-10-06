@@ -15,8 +15,10 @@
 | T04d | merged | 1 | ผ่านรอบแรก ไม่ต้องแก้; ฟังก์ชันเดิมไม่ถูกแก้ |
 | T05 | merged | 1 | ผ่านรอบแรก ไม่ต้องแก้; ทดสอบ engine จริงกับ Postgres แล้ว (build เสร็จเอง, SIGTERM ปิดสวย) |
 | T06a | merged | 1 | ผ่านรอบแรก ไม่ต้องแก้ (ครั้งแรกส่งไม่สำเร็จเพราะสคริปต์ผมเอง ไม่นับ) |
-| T06b | todo | 0 | ws.py + lifespan + cli api/new-world/pause/resume |
-| T07 | todo | 0 | |
+| T06b | merged | 1 | ผ่านรอบแรก ไม่ต้องแก้; ทดสอบ E2E จริง (API+engine+WS) ผ่าน |
+| T07a | todo | 0 | web: index.html, style.css, api/clock/ws/format.js |
+| T07b | todo | 0 | web: app.js + newgame.js |
+| T07c | todo | 0 | web: village.js + center.js |
 | T08 | todo | 0 | |
 
 สถานะที่ใช้: todo · delegated · in-review · merged · blocked · claude-fallback
