@@ -1,0 +1,18 @@
+{
+  "id": "T04b",
+  "title": "services: worlds (Phase 0)",
+  "spec": ["199-221", "765-779", "1103-1118", "1366-1386"],
+  "read": [
+    "realm/db/models.py",
+    "realm/core/config.py",
+    "realm/core/clock.py",
+    "realm/core/slots.py",
+    "realm/core/types.py",
+    "realm/services/errors.py",
+    "realm/services/events.py"
+  ],
+  "write": ["realm/services/worlds.py", "tests/services/test_worlds.py"],
+  "test_cmd": "uv run pytest tests/services/test_worlds.py -q -rs",
+  "criteria": "Implement realm/services/worlds.py per BUILD.md 8.8 (Phase 0 version, see the T04 'create_world Phase 0' paragraph): current_world, world_now, create_world, pause, resume. Do NOT implement end_round (a later task adds it). Tests (tests/services/test_worlds.py, DB fixture `s`, `cfg`, `t0`):\n- create_world(s, seed=1, speed=1, player_name='ผู้เล่น', tribe='stonehold', bot_count=30, cfg=cfg, real_now=t0): any previously running world becomes status 'ended'; new world status 'running'; exactly 1 tile at (0,0) kind 'valley' layout '4-4-4-6'; exactly 1 human player (is_bot False, tribe 'stonehold', production_mult 1.0) and NO bots even though bot_count=30; exactly 1 village at (0,0), layout '4-4-4-6', is_capital True, resources wood/stone/iron/food = 750 each (cfg.world.start_resources), res_updated_at == game epoch; player.capital_village_id == village.id; buildings: 21 rows = 18 fields level 0 + town_hall level 1 (slot 19) + rally_point 0 (slot 39) + wall 0 (slot 40); a ROUND_END event with payload {} and due_at == world.ends_at, ends_at == game_epoch + round_days*86400/speed (60 days -> 5184000 s at speed 1, 518400 s at speed 10); player.protection_until == epoch + protection_hours*3600/speed.\n- current_world returns the newest running world; raises GameError NOT_FOUND when none is running (end all worlds first inside the test).\n- world_now: running -> real_now - paused_total_s; paused -> frozen at paused_at - paused_total_s.\n- pause then resume 600 s later: paused_at set then None, paused_total_s == 600, world_now afterwards continues from the same game time as at pause; pause twice is idempotent; resume when not paused is a no-op.\n- unknown tribe or speed not in (1, 3, 5, 10) -> GameError code INVALID_TARGET.",
+  "notes": "- Signature: create_world(s, *, seed: int, speed: int, player_name: str, tribe: str, bot_count: int, cfg, real_now: datetime) -> World; pause(s, real_now) -> World; resume(s, real_now) -> World; current_world(s) -> World; world_now(world, real_now) -> datetime (uses realm.core.clock.game_now).\n- Game epoch: world.created_at = real_now, world.game_epoch = real_now (game time starts equal to real time). All other timestamps (player.created_at, cp_updated_at, village.created_at, res_updated_at) = game_epoch.\n- Village name: f'หมู่บ้านของ{player_name}'. Starting resources and buildings come from cfg.world.start_resources and realm.core.slots.initial_buildings(layout, cfg); never hard-code 750.\n- Duration math: cfg.world.round_days * 86400 / speed seconds and cfg.world.protection_hours * 3600 / speed (use timedelta(seconds=...)).\n- Close old worlds with an UPDATE ... SET status='ended' WHERE status='running'.\n- Schedule ROUND_END with realm.services.events.schedule(s, world.id, EventType.ROUND_END, world.ends_at, {}).\n- GameError(code, message_th): use the code constants from realm.services.errors (e.g. INVALID_TARGET, NOT_FOUND) with a Thai message.\n- Flush after inserts so ids are available; never commit; never call datetime.now()."
+}
