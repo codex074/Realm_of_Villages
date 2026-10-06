@@ -424,3 +424,84 @@ body {
   color: var(--muted);
   margin-top: 2px;
 }
+
+/* village + center + slot panel */
+
+.village-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.village-name {
+  font-size: 20px;
+  margin: 0;
+}
+
+.btn.small {
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.panel-heading {
+  font-size: 15px;
+  margin: 0 0 8px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.rates-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.rates-row .rate {
+  font-variant-numeric: tabular-nums;
+}
+
+.movement {
+  flex-wrap: wrap;
+}
+
+.movement-units {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.cost-rows {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.slot-option {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  margin: 10px 0;
+}
+
+.slot-option-name {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.bottom-sheet .btn {
+  margin-bottom: 8px;
+}
+
+/* ---------- Narrow screens: keep all four resources visible ---------- */
+@media (max-width: 480px) {
+  #clock { display: none; }
+  .res { font-size: 12px; }
+}

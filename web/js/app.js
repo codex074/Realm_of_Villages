@@ -116,6 +116,8 @@ async function renderRoute() {
     return;
   }
   if (token !== renderToken) return;
+  // Village pages need a loaded village; a later refresh() re-renders once it exists.
+  if ((route.view === 'village' || route.view === 'center') && village == null) return;
   let mod;
   try {
     mod = await import(`./views/${route.view}.js`);
