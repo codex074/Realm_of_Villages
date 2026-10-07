@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from realm.core.config import GameConfig
 from realm.core.types import EventType
 from realm.db.models import Event
-from realm.services import villages
+from realm.services import training, villages
 
 logger = logging.getLogger("realm.engine")
 
@@ -21,8 +21,8 @@ def handle_build_complete(s: Session, ev: Event, cfg: GameConfig) -> None:
 
 
 def handle_train_tick(s: Session, ev: Event, cfg: GameConfig) -> None:
-    """Advance one training tick (T11 not implemented yet)."""
-    raise NotImplementedError("T11 not implemented yet")
+    """Advance a training order at the event's due time (never the real clock)."""
+    training.tick_training(s, ev.payload["training_id"], ev.due_at, cfg)
 
 
 def handle_movement_arrive(s: Session, ev: Event, cfg: GameConfig) -> None:
