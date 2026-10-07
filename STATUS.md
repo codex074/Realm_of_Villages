@@ -51,6 +51,9 @@
 | T33 | merged | 1 | rate limit (60/10 วิ ต่อบัญชี/IP), กันคำสั่งซ้ำ 1 วิ, audit_log; Claude แก้ไทยเพี้ยน 2 ข้อความ, อ่าน X-Forwarded-For (หลัง Caddy), เพิ่ม fixture รีเซ็ต guard ใน conftest (สถานะระดับโมดูลทำให้ test ข้ามกันชนกัน) |
 | T34 | merged | 0 | Claude ทำเอง: เว็บ login/สมัคร, เข้าร่วมโลก, หน้าพันธมิตร+แชท (poll 5 วิ), account box; ทดสอบในเบราว์เซอร์จริงโหมด auth แล้ว |
 | UI-2 | merged | 0 | Claude ทำเอง: หน้าหมู่บ้านเป็นฉากภาพวาด SVG (web/js/views/scene.js) แทนตารางช่อง: กำแพงวงรี+คูน้ำ+สะพาน+ประตู, อาคาร 13 ชนิดวาดเอง, ไร่/เหมืองอยู่รอบนอกตามเผ่าของช่อง, ป้ายเลเวล, นั่งร้านตอนก่อสร้าง; #/ = ภาพทั้งหมด, #/center = ซูมเข้าในกำแพง; ทดสอบเดสก์ท็อป+มือถือแล้ว |
+| T40a | merged | 1 | Phase 4: ห้าม attack/raid/scout พันธมิตร, alliance ในอันดับ+แผนที่; ผ่านรอบแรก ไม่ต้องแก้ (586 tests) |
+| T40b | merged | 0 | Claude ทำเอง: เว็บแผนที่ (สีเขียวพวกเดียวกัน, ชื่อพันธมิตร, แก้ป้าย 'bot' ที่ขึ้นผิดกับผู้เล่นจริง) + คอลัมน์พันธมิตรในอันดับ; ทดสอบเบราว์เซอร์แล้ว |
+| T41 | merged | 0 | Claude ทำเอง: REALM_COOKIE_SECURE, .env.example, docs/MULTIPLAYER.md |
 
 สถานะที่ใช้: todo · delegated · in-review · merged · blocked · claude-fallback
 

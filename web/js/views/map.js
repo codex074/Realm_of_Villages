@@ -105,14 +105,18 @@ function drawMap(canvas, map, center, icons = {}) {
     if (t.village) {
       ctx2.beginPath();
       ctx2.arc(px + CELL / 2, py + CELL / 2, CELL * 0.44, 0, Math.PI * 2);
-      ctx2.fillStyle = t.village.is_mine ? 'rgba(74, 111, 165, 0.55)' : 'rgba(166, 61, 61, 0.45)';
+      ctx2.fillStyle = t.village.is_mine
+        ? 'rgba(74, 111, 165, 0.55)'
+        : t.village.is_ally
+          ? 'rgba(76, 150, 70, 0.55)'
+          : 'rgba(166, 61, 61, 0.45)';
       ctx2.fill();
       if (icons.village) {
         ctx2.drawImage(icons.village, px + CELL * 0.1, py + CELL * 0.1, CELL * 0.8, CELL * 0.8);
       }
       ctx2.beginPath();
       ctx2.arc(px + CELL / 2, py + CELL / 2, CELL * 0.44, 0, Math.PI * 2);
-      ctx2.strokeStyle = t.village.is_mine ? '#1f4f8f' : '#7a2020';
+      ctx2.strokeStyle = t.village.is_mine ? '#1f4f8f' : t.village.is_ally ? '#2f6f2a' : '#7a2020';
       ctx2.lineWidth = 2.5;
       ctx2.stroke();
     }
@@ -156,7 +160,9 @@ function fillInfo(panel, ctx, tile, center) {
     panel.append(h('div', { class: 'list-row' }, `ผู้เล่น: ${v.player_name}`));
     panel.append(h('div', { class: 'list-row' }, `เผ่า: ${tribeName}`));
     panel.append(h('div', { class: 'list-row' }, `ประชากร: ${v.population}`));
-    panel.append(h('div', { class: 'list-row' }, v.is_mine ? 'ของคุณ' : 'bot'));
+    if (v.alliance) panel.append(h('div', { class: 'list-row' }, `พันธมิตร: ${v.alliance}`));
+    const owner = v.is_mine ? 'ของคุณ' : v.is_ally ? 'พวกเดียวกัน' : v.is_bot ? 'bot' : 'ผู้เล่นอื่น';
+    panel.append(h('div', { class: 'list-row' }, owner));
   } else {
     panel.append(h('div', { class: 'list-row muted' }, 'ไม่มีหมู่บ้าน'));
   }
