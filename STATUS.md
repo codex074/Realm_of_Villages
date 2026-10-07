@@ -24,7 +24,7 @@
 | T12a | merged | 1 | Claude แก้ข้อความไทย 5 ข้อความที่ Qwen พิมพ์เพี้ยนแม้ให้คัดลอก |
 | T12b | merged | 1 | ผ่านรอบแรก ตัวเลขรบตรวจอิสระตรงกัน (38/50, 27/36) |
 | T11 | merged | 1 | ผ่านรอบแรก ไม่ต้องแก้ (ข้อความไทยที่ให้คัดลอก ถูกต้องครบ) |
-| T13a | todo | 0 | military: send/preview/recall/return |
+| T13a | merged | 1 | Claude แก้คำไทย "น้ี"x2 "ท่ี"x1 ที่ Qwen พิมพ์ผิดแม้ให้คัดลอก; logic ถูกต้อง |
 | T13b | todo | 0 | military: resolve_arrival รบ/สอดแนม/เสริม + reports |
 | T08 | merged | 1 | Claude แก้ healthcheck (ขาด "CMD"); build+up จริงผ่าน: migrate, เว็บ/API/WS ผ่าน Caddy :8080, engine ทำงาน, backup.sh ใช้ได้ |
 
