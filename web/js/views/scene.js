@@ -184,7 +184,7 @@ function flag(x, y, h = 46, color = C.red) {
     'g',
     { transform: `translate(${x} ${y})` },
     line(0, 0, 0, -h, C.woodD, 3),
-    el('path', { d: `M1 ${-h}h20l-5 8 5 8H1z`, fill: color, stroke: INK, 'stroke-width': 1.2 }),
+    el('path', { d: `M1 ${-h}h20l-5 8 5 8H1z`, fill: color, stroke: INK, 'stroke-width': 1.2, class: 'sc-flag' }),
     el('circle', { cx: 0, cy: -h, r: 3, fill: C.gold, stroke: INK, 'stroke-width': 1 }),
   );
 }
@@ -192,7 +192,7 @@ function flag(x, y, h = 46, color = C.red) {
 function smoke(x, y) {
   return el(
     'g',
-    { opacity: 0.8 },
+    { opacity: 0.8, class: 'sc-smoke' },
     el('circle', { cx: x, cy: y, r: 5, fill: '#e8e8e8', stroke: INK, 'stroke-width': 0.8 }),
     el('circle', { cx: x + 5, cy: y - 10, r: 7, fill: '#f0f0f0', stroke: INK, 'stroke-width': 0.8 }),
     el('circle', { cx: x + 2, cy: y - 22, r: 9, fill: '#f6f6f6', stroke: INK, 'stroke-width': 0.8 }),
@@ -417,8 +417,7 @@ const FIELD_SPRITES = {
     if (level >= 6) {
       const mill = el('g', { transform: 'translate(44 6)' });
       mill.append(tower({ r: 11, h: 36, cone: 16, wall: C.wallL }));
-      mill.append(line(-22, -48, 22, -26, C.woodD, 3));
-      mill.append(line(22, -48, -22, -26, C.woodD, 3));
+      mill.append(el('g', { class: 'sc-sails' }, line(-22, -48, 22, -26, C.woodD, 3), line(22, -48, -22, -26, C.woodD, 3)));
       g.append(mill);
     } else {
       g.append(ellipse(46, 4, 12, 8, C.hay));
@@ -557,7 +556,7 @@ function drawTerrain(root, rng, fieldAnchors, fieldTypes) {
   root.append(ellipse(CX, CY + 6, mrx + 30, mry + 30, '#7f8f6a', { opacity: 0.35, stroke: 'none' }));
   root.append(el('ellipse', { cx: CX, cy: CY + 4, rx: mrx, ry: mry, fill: 'none', stroke: '#b9b0a0', 'stroke-width': 66 }));
   root.append(el('ellipse', { cx: CX, cy: CY + 4, rx: mrx, ry: mry, fill: 'none', stroke: 'url(#sc-water)', 'stroke-width': 54 }));
-  root.append(el('ellipse', { cx: CX, cy: CY + 4, rx: mrx, ry: mry, fill: 'none', stroke: '#e9f6fb', 'stroke-width': 3, 'stroke-dasharray': '34 22', opacity: 0.85 }));
+  root.append(el('ellipse', { cx: CX, cy: CY + 4, rx: mrx, ry: mry, fill: 'none', stroke: '#e9f6fb', 'stroke-width': 3, 'stroke-dasharray': '34 22', opacity: 0.85, class: 'sc-foam' }));
   // bank stones
   for (let i = 0; i < 46; i++) {
     const a = (i / 46) * Math.PI * 2 + rng() * 0.1;

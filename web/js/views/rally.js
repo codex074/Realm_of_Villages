@@ -4,6 +4,7 @@ import { api, ApiError } from '../api.js';
 import { h, clear } from '../dom.js';
 import { countdown } from '../clock.js';
 import { fmtNum, fmtDuration, fmtTime } from '../format.js';
+import { unitLabel, unitsLine } from '../units.js';
 
 const MISSION_LABELS = {
   attack: 'โจมตี',
@@ -19,18 +20,13 @@ const PREVIEW_DEBOUNCE_MS = 300;
 // One movement row: direction arrow, mission, target, units, countdown.
 function movementRow(ctx, m) {
   const arrow = m.direction === 'out' ? '→' : '←';
-  const units =
-    m.units == null
-      ? null
-      : Object.entries(m.units)
-          .map(([unit, count]) => `${(ctx.meta.units || {})[unit]?.name_th ?? unit} x${count}`)
-          .join(', ');
+  const units = m.units == null ? null : unitsLine(ctx, m.units);
   return h(
     'div',
     { class: 'list-row movement' + (m.hostile ? ' negative' : '') },
     h('span', {}, `${arrow} ${MISSION_LABELS[m.mission] ?? m.mission}`),
     h('span', {}, `(${m.to.x}, ${m.to.y})`),
-    units ? h('div', { class: 'movement-units' }, units) : null,
+    units ? h('div', { class: 'movement-units' }, ...units) : null,
     h('span', { class: 'countdown', 'data-countdown': m.arrive_at }, countdown(m.arrive_at)),
   );
 }
@@ -49,9 +45,7 @@ function reinforcementsPanel(ctx) {
   const v = ctx.village;
   const body = v.reinforcements_here.length
     ? v.reinforcements_here.map((r) => {
-        const units = Object.entries(r.units || {})
-          .map(([unit, count]) => `${(ctx.meta.units || {})[unit]?.name_th ?? unit} x${count}`)
-          .join(', ');
+        const units = unitsLine(ctx, r.units);
         const recallBtn = h('button', { class: 'btn small' }, 'เรียกกลับ');
         recallBtn.addEventListener('click', async () => {
           try {
@@ -65,7 +59,7 @@ function reinforcementsPanel(ctx) {
         return h(
           'div',
           { class: 'list-row' },
-          h('span', {}, `${r.from_village.name}: ${units}`),
+          h('span', {}, `${r.from_village.name}: `, ...units),
           recallBtn,
         );
       })
@@ -108,7 +102,7 @@ export async function render(el, ctx, params) {
         h(
           'div',
           { class: 'unit-row' },
-          h('span', {}, `${(ctx.meta.units || {})[unit]?.name_th ?? unit} (มี ${count})`),
+          h('span', {}, unitLabel(ctx, unit, ` (มี ${count})`)),
           input,
           maxBtn,
         ),

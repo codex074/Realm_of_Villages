@@ -1,9 +1,10 @@
 // Shared build queue panel and slot bottom sheet (BUILD.md section 10).
 
 import { api, ApiError } from '../api.js';
-import { h } from '../dom.js';
+import { h, icon } from '../dom.js';
 import { countdown } from '../clock.js';
 import { fmtNum, fmtDuration } from '../format.js';
+import { unitLabel } from '../units.js';
 
 const RES_KEYS = ['wood', 'stone', 'iron', 'food'];
 const RES_LABELS = { wood: 'ไม้', stone: 'หิน', iron: 'เหล็ก', food: 'อาหาร' };
@@ -112,7 +113,9 @@ export async function openSlotPanel(el, ctx, slot) {
       'สร้าง',
     );
     btn.addEventListener('click', () => doBuild(btn, ctx, slot, opt.type));
-    sheet.append(costBlock(ctx, opt, btn, opt.name_th));
+    sheet.append(
+      costBlock(ctx, opt, btn, h('span', { class: 'unit-label' }, icon(opt.type, 'ico unit-icon'), opt.name_th)),
+    );
   }
   if (view.current) await appendTraining(ctx, sheet, view.current);
   if (view.current && view.current.type === 'smithy') await appendSmithy(ctx, sheet);
@@ -216,7 +219,7 @@ async function appendTraining(ctx, sheet, current) {
       const block = h(
         'div',
         { class: 'slot-option' },
-        h('div', { class: 'slot-option-name' }, opt.name_th),
+        h('div', { class: 'slot-option-name' }, unitLabel(ctx, opt.unit)),
         h('div', { class: 'cost-rows' }, ...costRows(ctx, opt.cost)),
         h('div', { class: 'muted' }, `เวลา ${fmtDuration(opt.time_s)}`),
       );
@@ -235,7 +238,7 @@ async function appendTraining(ctx, sheet, current) {
         h(
           'div',
           { class: 'list-row' },
-          h('span', {}, `${(ctx.meta.units || {})[t.unit]?.name_th ?? t.unit}: ${t.count_done}/${t.count_total}`),
+          h('span', {}, unitLabel(ctx, t.unit, `: ${t.count_done}/${t.count_total}`)),
           h('span', { class: 'countdown', 'data-countdown': t.next_at }, countdown(t.next_at)),
         ),
       )

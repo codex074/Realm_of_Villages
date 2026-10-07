@@ -6,6 +6,7 @@ import { countdown } from '../clock.js';
 import { fmtNum } from '../format.js';
 import { queuePanel } from './slotpanel.js';
 import { sceneFrame } from './scene.js';
+import { unitLabel, unitsLine } from '../units.js';
 
 const RES_KEYS = ['wood', 'stone', 'iron', 'food'];
 const RES_LABELS = { wood: 'ไม้', stone: 'หิน', iron: 'เหล็ก', food: 'อาหาร' };
@@ -66,9 +67,7 @@ function cultureRow(ctx) {
 function troopsPanel(ctx) {
   const rows = Object.entries(ctx.village.troops_home || {});
   const body = rows.length
-    ? rows.map(([unit, count]) =>
-        h('div', { class: 'list-row' }, `${(ctx.meta.units || {})[unit]?.name_th ?? unit} x${count}`),
-      )
+    ? rows.map(([unit, count]) => h('div', { class: 'list-row' }, unitLabel(ctx, unit, ` x${count}`)))
     : [h('div', { class: 'list-row muted' }, 'ไม่มีทหาร')];
   return h('div', { class: 'panel' }, h('h2', { class: 'panel-heading' }, 'ทหารในหมู่บ้าน'), ...body);
 }
@@ -76,18 +75,13 @@ function troopsPanel(ctx) {
 // One movement row: direction arrow, mission, target, units, countdown.
 function movementRow(ctx, m) {
   const arrow = m.direction === 'out' ? '→' : '←';
-  const units =
-    m.units == null
-      ? null
-      : Object.entries(m.units)
-          .map(([unit, count]) => `${(ctx.meta.units || {})[unit]?.name_th ?? unit} x${count}`)
-          .join(', ');
+  const units = m.units == null ? null : unitsLine(ctx, m.units);
   return h(
     'div',
     { class: 'list-row movement' + (m.hostile ? ' negative' : '') },
     h('span', {}, `${arrow} ${MISSION_LABELS[m.mission] ?? m.mission}`),
     h('span', {}, `(${m.to.x}, ${m.to.y})`),
-    units ? h('div', { class: 'movement-units' }, units) : null,
+    units ? h('div', { class: 'movement-units' }, ...units) : null,
     h('span', { class: 'countdown', 'data-countdown': m.arrive_at }, countdown(m.arrive_at)),
   );
 }

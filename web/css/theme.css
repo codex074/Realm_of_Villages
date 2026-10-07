@@ -276,3 +276,19 @@ tr.me td { background: rgba(201, 162, 39, 0.28); font-weight: 700; }
 .scene { display: block; width: 100%; min-width: 580px; height: auto; }
 .scene .hit { transition: filter 0.12s; }
 .scene .hit:hover { filter: brightness(1.12) drop-shadow(0 0 6px rgba(255, 240, 160, 0.9)); }
+
+/* ---------- unit labels with icons ---------- */
+.unit-label { display: inline-flex; align-items: center; gap: 3px; margin-right: 8px; white-space: nowrap; }
+.unit-icon { width: 22px; height: 22px; flex: none; }
+.movement-units { display: flex; flex-wrap: wrap; gap: 2px 4px; }
+
+/* ---------- scene animations (gentle; off for reduced motion) ---------- */
+@keyframes sc-foam { to { stroke-dashoffset: -112; } }
+@keyframes sc-rise { 0% { transform: translateY(0); opacity: 0.85; } 100% { transform: translateY(-16px); opacity: 0; } }
+@keyframes sc-wave { 0%, 100% { transform: skewY(0deg); } 50% { transform: skewY(7deg); } }
+@keyframes sc-spin { to { transform: rotate(360deg); } }
+.sc-foam { animation: sc-foam 7s linear infinite; }
+.sc-smoke { animation: sc-rise 3.2s ease-out infinite; }
+.sc-flag { transform-box: fill-box; transform-origin: left center; animation: sc-wave 1.8s ease-in-out infinite; }
+.sc-sails { transform-box: fill-box; transform-origin: center; animation: sc-spin 14s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .sc-foam, .sc-smoke, .sc-flag, .sc-sails { animation: none; } }

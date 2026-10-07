@@ -3,14 +3,10 @@
 import { api, ApiError } from '../api.js';
 import { h, clear } from '../dom.js';
 import { fmtNum, fmtTime } from '../format.js';
+import { unitLabel, unitsLine } from '../units.js';
 
 const RES_KEYS = ['wood', 'stone', 'iron', 'food'];
 const RES_LABELS = { wood: 'ไม้', stone: 'หิน', iron: 'เหล็ก', food: 'อาหาร' };
-
-// Thai name for a unit key, falling back to the key itself.
-function unitName(ctx, key) {
-  return (ctx.meta.units || {})[key]?.name_th ?? key;
-}
 
 // Units table with columns: unit / count / losses.
 function unitsTable(ctx, units, losses) {
@@ -18,7 +14,7 @@ function unitsTable(ctx, units, losses) {
     h(
       'tr',
       {},
-      h('td', {}, unitName(ctx, unit)),
+      h('td', {}, unitLabel(ctx, unit)),
       h('td', {}, fmtNum(count)),
       h('td', {}, fmtNum(losses?.[unit] ?? 0)),
     ),
@@ -78,7 +74,7 @@ function scoutDetail(ctx, data) {
   el.append(
     h('h3', {}, 'ทหารในหมู่บ้าน'),
     entries.length
-      ? entries.map(([u, c]) => h('div', {}, `${unitName(ctx, u)} x${c}`))
+      ? entries.map(([u, c]) => h('div', {}, unitLabel(ctx, u, ` x${c}`)))
       : h('div', { class: 'muted' }, 'ไม่มีทหาร'),
   );
   if (data.wall != null) el.append(h('div', {}, `กำแพงเลเวล ${data.wall}`));
@@ -96,10 +92,7 @@ function scoutDetail(ctx, data) {
 
 // Reinforce report: one line listing the moved units.
 function reinforceDetail(ctx, data) {
-  const units = Object.entries(data.units || {})
-    .map(([u, c]) => `${unitName(ctx, u)} x${c}`)
-    .join(', ');
-  return h('div', { class: 'panel' }, h('div', {}, units));
+  return h('div', { class: 'panel' }, h('div', {}, ...unitsLine(ctx, data.units)));
 }
 
 // Info report: starvation losses and/or round-end winner and top list.
@@ -108,7 +101,7 @@ function infoDetail(ctx, data) {
   if (data.killed) {
     el.append(
       h('h3', {}, 'ทหารที่ตาย'),
-      ...Object.entries(data.killed).map(([u, c]) => h('div', {}, `${unitName(ctx, u)} x${c}`)),
+      ...Object.entries(data.killed).map(([u, c]) => h('div', {}, unitLabel(ctx, u, ` x${c}`))),
     );
   }
   if (data.ruins) {
