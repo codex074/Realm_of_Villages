@@ -539,3 +539,95 @@ def get_map(
             )
         )
     return MapView(size=size, center=Coord(x=center_x, y=center_y), radius=r, tiles=out_tiles)
+
+
+FIND_KINDS = ("village", "oasis", "valley", "ruin")
+_LAYOUT_INDEX = {"wood": 0, "stone": 1, "iron": 2, "food": 3}
+
+
+def find_nearest(
+    s: Session,
+    world_id: int,
+    player_id: int,
+    from_x: int,
+    from_y: int,
+    kind: str,
+    resource: str | None = None,
+    who: str = "all",
+    limit: int = 20,
+) -> list[dict]:
+    """Nearest map targets from (from_x, from_y), sorted by torus distance.
+
+    kind: 'village' (other players' villages; who = all | bot | player), 'oasis' (resource
+    filters the bonus type), 'valley' (free valleys to settle; resource keeps layouts with at
+    least 5 fields of it, richest first on equal distance) or 'ruin'.
+    """
+    if kind not in FIND_KINDS:
+        raise GameError(INVALID_TARGET, "ประเภทการค้นหาไม่ถูกต้อง")
+    if resource is not None and resource not in _LAYOUT_INDEX:
+        raise GameError(INVALID_TARGET, "ประเภททรัพยากรไม่ถูกต้อง")
+    limit = max(1, min(limit, 50))
+    size = s.get(World, world_id).size
+    out: list[dict] = []
+    if kind == "village":
+        stmt = (
+            select(Village, Player)
+            .join(Player, Player.id == Village.player_id)
+            .where(Village.world_id == world_id, Village.player_id != player_id)
+        )
+        if who == "bot":
+            stmt = stmt.where(Player.is_bot.is_(True))
+        elif who == "player":
+            stmt = stmt.where(Player.is_bot.is_(False))
+        names = alliances.alliance_names(s, world_id)
+        mine = names.get(player_id)
+        for v, p in s.execute(stmt).all():
+            out.append(
+                {
+                    "x": v.x,
+                    "y": v.y,
+                    "kind": "village",
+                    "distance": movement.distance(from_x, from_y, v.x, v.y, size),
+                    "name": v.name,
+                    "player_name": p.name,
+                    "is_bot": p.is_bot,
+                    "is_ally": mine is not None and names.get(p.id) == mine,
+                }
+            )
+    else:
+        stmt = select(Tile).where(Tile.world_id == world_id, Tile.kind == kind)
+        if kind == "oasis" and resource is not None:
+            stmt = stmt.where(Tile.oasis_type == resource)
+        taken: set[tuple[int, int]] = set()
+        if kind == "valley":
+            taken = {
+                (x, y)
+                for x, y in s.execute(
+                    select(Village.x, Village.y).where(Village.world_id == world_id)
+                ).all()
+            }
+        for t in s.scalars(stmt).all():
+            if (t.x, t.y) in taken:
+                continue
+            rich = 0
+            if kind == "valley" and resource is not None:
+                rich = int((t.layout or "0-0-0-0").split("-")[_LAYOUT_INDEX[resource]])
+                if rich < 5:
+                    continue
+            out.append(
+                {
+                    "x": t.x,
+                    "y": t.y,
+                    "kind": t.kind,
+                    "distance": movement.distance(from_x, from_y, t.x, t.y, size),
+                    "layout": t.layout,
+                    "oasis_type": t.oasis_type,
+                    "owned": t.oasis_owner_village_id is not None,
+                    "animals": sum((t.animals or {}).values()),
+                    "rich": rich,
+                }
+            )
+    out.sort(key=lambda r: (round(r["distance"], 6), -r.get("rich", 0), r["x"], r["y"]))
+    for r in out[:limit]:
+        r["distance"] = round(r["distance"], 2)
+    return out[:limit]

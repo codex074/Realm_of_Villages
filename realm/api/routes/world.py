@@ -34,3 +34,19 @@ def ranking_route(
 ) -> list[RankingRow]:
     """Return the ranking of every player of the current world."""
     return ranking.get_ranking(s, world.id, cfg)
+
+
+@router.get("/map/nearest")
+def nearest_route(
+    kind: str,
+    from_x: int,
+    from_y: int,
+    resource: str | None = None,
+    who: str = "all",
+    limit: int = 20,
+    s: Session = Depends(get_session),  # noqa: B008
+    player: Player = Depends(get_player),  # noqa: B008
+    world: World = Depends(get_world),  # noqa: B008
+) -> list[dict]:
+    """Nearest villages, oases, free valleys or ruins from a coordinate, closest first."""
+    return worlds.find_nearest(s, world.id, player.id, from_x, from_y, kind, resource, who, limit)

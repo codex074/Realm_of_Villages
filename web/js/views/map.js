@@ -2,7 +2,7 @@
 // tap a tile for a sheet with details and actions (send troops, raid, scout, reinforce, settle).
 
 import { api, ApiError } from '../api.js';
-import { h, clear } from '../dom.js';
+import { h, clear, icon } from '../dom.js';
 import { art } from './scene.js';
 
 const { el, rect, poly, line, ellipse, text, shadow, pine, tree, bush, rock, mountain, hall, flag, addDefs } = art;
@@ -21,7 +21,14 @@ const KIND_LABEL = { valley: 'ทุ่งราบ (ตั้งหมู่บ
 const RES_LABEL = { wood: 'ไม้', stone: 'หิน', iron: 'เหล็ก', food: 'อาหาร' };
 
 // View state survives re-renders (websocket refreshes) within the session.
-const state = { cx: null, cy: null, vb: null, selected: null };
+const state = { cx: null, cy: null, vb: null, selected: null, find: null };
+
+const FIND_TABS = [
+  { key: 'village', label: 'หมู่บ้าน', filters: [['all', 'ทั้งหมด'], ['player', 'ผู้เล่น'], ['bot', 'bot']] },
+  { key: 'oasis', label: 'โอเอซิส', filters: [['', 'ทั้งหมด'], ['wood', 'ไม้'], ['stone', 'หิน'], ['iron', 'เหล็ก'], ['food', 'อาหาร']] },
+  { key: 'valley', label: 'ที่ว่างตั้งหมู่บ้าน', filters: [['', 'ทั้งหมด'], ['wood', 'ไม้เยอะ'], ['stone', 'หินเยอะ'], ['iron', 'เหล็กเยอะ'], ['food', 'อาหารเยอะ']] },
+  { key: 'ruin', label: 'ซากโบราณ', filters: [] },
+];
 
 function relation(v) {
   if (v.is_mine) return 'mine';
@@ -150,6 +157,7 @@ export async function render(el0, ctx, params) {
     state.cx = qx;
     state.cy = qy;
     if (params.query.get('keep') !== '1') state.vb = null;
+    if (params.query.get('sel') === '1') state.selected = { x: qx, y: qy };
   } else if (state.cx === null) {
     state.cx = home.x;
     state.cy = home.y;
@@ -340,6 +348,8 @@ export async function render(el0, ctx, params) {
   }
   function select(t) {
     state.selected = { x: t.x, y: t.y };
+    findPanel.hidden = true;
+    state.find = null;
     selRing.setAttribute('x', t.dx * T + 1);
     selRing.setAttribute('y', t.dy * T + 1);
     selRing.setAttribute('visibility', 'visible');
@@ -416,19 +426,106 @@ export async function render(el0, ctx, params) {
     h('button', { class: 'btn small', type: 'submit' }, 'ไป'),
   );
   const homeBtn = h('button', { class: 'hud-pill', type: 'button', onclick: () => { state.vb = null; ctx.navigate(`#/map?x=${home.x}&y=${home.y}`); } }, '⌂ หมู่บ้านของฉัน');
+  const findPanel = h('div', { class: 'scene-drawer map-find', hidden: true });
+  const findBtn = h('button', { class: 'hud-pill map-find-btn', type: 'button', onclick: () => toggleFind() }, '🔍 ค้นหาใกล้สุด');
+
+  function toggleFind(force) {
+    const open = force ?? findPanel.hidden;
+    if (!open) {
+      findPanel.hidden = true;
+      state.find = null;
+      return;
+    }
+    if (!state.find) state.find = { kind: 'village', filter: 'all' };
+    sheet.hidden = true;
+    drawFind();
+  }
+
+  async function drawFind() {
+    const f = state.find;
+    clear(findPanel);
+    findPanel.hidden = false;
+    const tab = FIND_TABS.find((x) => x.key === f.kind);
+    findPanel.append(
+      h('button', { class: 'btn small drawer-close', type: 'button', onclick: () => toggleFind(false) }, 'ปิด'),
+      h('h2', { class: 'panel-heading' }, `ใกล้หมู่บ้าน (${home.x}, ${home.y}) ที่สุด`),
+      h('div', { class: 'find-tabs' }, ...FIND_TABS.map((x) =>
+        h('button', { class: 'find-chip' + (x.key === f.kind ? ' active' : ''), type: 'button', onclick: () => { state.find = { kind: x.key, filter: x.filters[0] ? x.filters[0][0] : '' }; drawFind(); } }, x.label))),
+    );
+    if (tab.filters.length) {
+      findPanel.append(h('div', { class: 'find-tabs find-filters' }, ...tab.filters.map(([val, lab]) =>
+        h('button', { class: 'find-chip small' + (val === f.filter ? ' active' : ''), type: 'button', onclick: () => { state.find = { ...f, filter: val }; drawFind(); } }, lab))));
+    }
+    const list = h('div', { class: 'find-list' }, h('div', { class: 'muted' }, 'กำลังค้นหา...'));
+    findPanel.append(list);
+    const q = new URLSearchParams({ kind: f.kind, from_x: home.x, from_y: home.y, limit: '25' });
+    if (f.kind === 'village') q.set('who', f.filter || 'all');
+    else if (f.filter) q.set('resource', f.filter);
+    let rows;
+    try {
+      rows = await api.get(`/map/nearest?${q}`);
+    } catch (err) {
+      if (err instanceof ApiError) ctx.toast(err.message, true);
+      return;
+    }
+    if (state.find !== f) return;
+    clear(list);
+    if (!rows.length) list.append(h('div', { class: 'muted' }, 'ไม่พบ'));
+    for (const r of rows) {
+      let iconName = 'village';
+      let title = '';
+      let sub = '';
+      if (r.kind === 'village') {
+        title = r.name;
+        sub = `${r.player_name}${r.is_bot ? ' · bot' : ''}${r.is_ally ? ' · พันธมิตร' : ''}`;
+      } else if (r.kind === 'oasis') {
+        iconName = r.oasis_type || 'oasis';
+        title = `โอเอซิส${RES_LABEL[r.oasis_type] ?? ''} +25%`;
+        sub = `สัตว์ป่า ${r.animals}${r.owned ? ' · มีเจ้าของ' : ''}`;
+      } else if (r.kind === 'valley') {
+        iconName = 'map';
+        const [w, s2, i2, fd] = (r.layout || '').split('-');
+        title = 'ที่ว่างตั้งหมู่บ้าน';
+        sub = `ไม้ ${w} · หิน ${s2} · เหล็ก ${i2} · อาหาร ${fd}`;
+      } else {
+        iconName = 'ruin';
+        title = 'ซากโบราณ';
+        sub = `ผู้พิทักษ์ ${r.animals}${r.owned ? ' · มีเจ้าของ' : ''}`;
+      }
+      list.append(
+        h(
+          'button',
+          {
+            class: 'find-row',
+            type: 'button',
+            onclick: () => {
+              state.vb = null;
+              state.find = null;
+              findPanel.hidden = true;
+              ctx.navigate(`#/map?x=${r.x}&y=${r.y}&sel=1`);
+            },
+          },
+          icon(iconName, 'ico find-ico'),
+          h('span', { class: 'find-main' }, h('b', {}, title), h('span', { class: 'muted' }, sub)),
+          h('span', { class: 'find-dist' }, h('b', {}, `${r.distance.toFixed(1)}`), h('span', { class: 'muted' }, `(${r.x}, ${r.y})`)),
+        ),
+      );
+    }
+  }
   const legend = h(
     'div',
     { class: 'hud-pill map-legend' },
     ...Object.values(REL).map((r2) => h('span', { class: 'legend-item' }, h('i', { style: { background: r2.fill } }), r2.label)),
   );
-  const top = h('div', { class: 'hud-top map-top' }, h('div', { class: 'map-top-left' }, search, coordText), h('div', { class: 'map-top-right' }, homeBtn, legend));
+  const top = h('div', { class: 'hud-top map-top' }, h('div', { class: 'map-top-left' }, search, coordText), h('div', { class: 'map-top-right' }, findBtn, homeBtn, legend));
   const zoomBox = h(
     'div',
     { class: 'hud-zoombox map-zoombox' },
     h('button', { class: 'hud-zoom', type: 'button', title: 'ซูมเข้า', onclick: () => zoomCentre(1.4) }, '+'),
     h('button', { class: 'hud-zoom', type: 'button', title: 'ซูมออก', onclick: () => zoomCentre(1 / 1.4) }, '−'),
   );
-  frame.append(top, zoomBox, sheet);
+  frame.append(top, zoomBox, sheet, findPanel);
+  if (state.find) drawFind();
 
   apply();
   const ro = new ResizeObserver(() => apply());
