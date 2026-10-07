@@ -56,13 +56,40 @@ def troop_upkeep(units: Units, cfg: GameConfig) -> float:
     return round(sum(cfg.units[u].upkeep * n for u, n in units.items() if n > 0), 2)
 
 
-def unit_defense(unit: str, tribe: str, cfg: GameConfig) -> tuple[float, float]:
-    """(def_inf, def_cav) of one unit after the tribe inf_defense_mult."""
+def unit_defense(
+    unit: str, tribe: str, cfg: GameConfig, upgrade_level: int = 0
+) -> tuple[float, float]:
+    """(def_inf, def_cav) of one unit after the tribe inf_defense_mult and upgrades."""
     ud = cfg.units[unit]
     mult = cfg.tribes[tribe].modifiers.inf_defense_mult
+    up = upgrade_multiplier(upgrade_level, cfg)
     if ud.type == "inf":
-        return round(ud.def_inf * mult, 2), round(ud.def_cav * mult, 2)
-    return ud.def_inf, ud.def_cav
+        return round(ud.def_inf * mult, 2) * up, round(ud.def_cav * mult, 2) * up
+    return ud.def_inf * up, ud.def_cav * up
+
+
+def upgrade_multiplier(level: int, cfg: GameConfig) -> float:
+    """Attack and defense multiplier of a unit at a smithy upgrade level."""
+    return 1 + cfg.upgrades.bonus_per_level * level
+
+
+def can_upgrade(unit: str, cfg: GameConfig) -> bool:
+    """True when the unit's type is eligible for smithy upgrades."""
+    return cfg.units[unit].type in cfg.upgrades.unit_types
+
+
+def upgrade_cost(unit: str, tribe: str, target_level: int, cfg: GameConfig) -> Res:
+    """Cost of raising a unit to target_level: unit cost x multiple x growth^(L-1), floored."""
+    base = unit_cost(unit, tribe, cfg)
+    factor = cfg.upgrades.cost_unit_multiple * cfg.upgrades.cost_growth ** (target_level - 1)
+    return Res(*(float(math.floor(getattr(base, k) * factor + 1e-9)) for k in RESOURCE_KEYS))
+
+
+def upgrade_time_s(target_level: int, speed: int, cfg: GameConfig) -> float:
+    """Seconds to finish an upgrade to target_level at a world speed; minimum 1."""
+    return max(
+        1.0, cfg.upgrades.time_base_s * cfg.upgrades.time_growth ** (target_level - 1) / speed
+    )
 
 
 def missing_unit_requirements(unit: str, levels: Mapping[str, int], cfg: GameConfig) -> list[str]:

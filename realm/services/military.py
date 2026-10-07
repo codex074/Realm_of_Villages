@@ -12,7 +12,7 @@ from realm.core import units as units_core
 from realm.core.config import GameConfig
 from realm.core.types import EventType, Mission, Res, TileKind, Units
 from realm.db.models import Building, Movement, Player, Tile, Troop, Village, World
-from realm.services import conquest, events, notify, reports, villages
+from realm.services import conquest, events, notify, reports, smithy, villages
 from realm.services.errors import (
     FORBIDDEN,
     INVALID_TARGET,
@@ -339,7 +339,7 @@ def _lock_and_settle(s: Session, village_ids: list[int], now: datetime, cfg: Gam
         villages.settle_village(s, s.get(Village, vid), now, cfg)
 
 
-def _defender_groups(s: Session, target: Village) -> list[combat.ArmyGroup]:
+def _defender_groups(s: Session, target: Village, now: datetime) -> list[combat.ArmyGroup]:
     """Defender army groups at the target, grouped by home village."""
     by_home: dict[int, Units] = {}
     for t in s.scalars(
@@ -351,7 +351,12 @@ def _defender_groups(s: Session, target: Village) -> list[combat.ArmyGroup]:
     for home_id in sorted(by_home):
         owner = s.get(Player, s.get(Village, home_id).player_id)
         groups.append(
-            combat.ArmyGroup(tribe=owner.tribe, units=by_home[home_id], owner_ref=home_id)
+            combat.ArmyGroup(
+                tribe=owner.tribe,
+                units=by_home[home_id],
+                owner_ref=home_id,
+                upgrades=smithy.effective_levels(s, home_id, now),
+            )
         )
     return groups
 
@@ -400,9 +405,12 @@ def _resolve_battle_arrival(
     home = s.get(Village, m.from_village_id)
     attacker_player = s.get(Player, m.player_id)
     target_player = s.get(Player, target.player_id)
-    groups = _defender_groups(s, target)
+    groups = _defender_groups(s, target, now)
     attacker = combat.ArmyGroup(
-        tribe=attacker_player.tribe, units=dict(m.units), owner_ref=m.from_village_id
+        tribe=attacker_player.tribe,
+        units=dict(m.units),
+        owner_ref=m.from_village_id,
+        upgrades=smithy.effective_levels(s, m.from_village_id, now),
     )
     lv = villages.levels(s, target.id)
     wall_level = lv.get("wall", 0)

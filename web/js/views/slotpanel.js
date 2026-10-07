@@ -115,7 +115,60 @@ export async function openSlotPanel(el, ctx, slot) {
     sheet.append(costBlock(ctx, opt, btn, opt.name_th));
   }
   if (view.current) await appendTraining(ctx, sheet, view.current);
+  if (view.current && view.current.type === 'smithy') await appendSmithy(ctx, sheet);
   el.append(sheet);
+}
+
+// POST a smithy unit upgrade, toast the result, refresh; re-enable on error.
+async function doUpgrade(btn, ctx, unit) {
+  btn.disabled = true;
+  try {
+    await api.post(`/villages/${ctx.villageId}/upgrade`, { unit });
+    ctx.toast('เริ่มอัปเกรดแล้ว');
+    await ctx.refresh();
+  } catch (err) {
+    if (err instanceof ApiError) ctx.toast(err.message, true);
+    btn.disabled = false;
+  }
+}
+
+// Smithy section of the slot sheet: one block per upgradable unit.
+async function appendSmithy(ctx, sheet) {
+  let options;
+  try {
+    options = await api.get(`/villages/${ctx.villageId}/upgrades`);
+  } catch {
+    return;
+  }
+  sheet.append(h('h3', {}, 'อัปเกรดหน่วย'));
+  if (!options.length) {
+    sheet.append(h('div', { class: 'muted' }, 'ไม่มีหน่วยที่อัปเกรดได้'));
+    return;
+  }
+  for (const opt of options) {
+    const block = h('div', { class: 'slot-option' });
+    block.append(h('div', { class: 'slot-option-name' }, `${opt.name_th} เลเวล ${opt.level}`));
+    if (opt.target_level === null) {
+      block.append(h('div', { class: 'muted' }, 'เลเวลสูงสุดแล้ว'));
+      sheet.append(block);
+      continue;
+    }
+    block.append(
+      h('div', { class: 'cost-rows' }, ...costRows(ctx, opt.cost)),
+      h('div', { class: 'muted' }, `เวลา ${fmtDuration(opt.time_s)}`),
+    );
+    for (const m of opt.missing) block.append(h('div', { class: 'negative' }, m));
+    if (opt.finishes_at !== null) {
+      block.append(
+        h('span', { class: 'countdown', 'data-countdown': opt.finishes_at }, countdown(opt.finishes_at)),
+      );
+    } else {
+      const btn = h('button', { class: 'btn btn-primary', disabled: !opt.affordable }, 'อัปเกรด');
+      btn.addEventListener('click', () => doUpgrade(btn, ctx, opt.unit));
+      block.append(btn);
+    }
+    sheet.append(block);
+  }
 }
 
 // POST a train order, toast the result, refresh; re-enable the button on error.

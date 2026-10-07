@@ -281,6 +281,15 @@ culture:
   # แต้มสะสมขั้นต่ำเพื่อมีหมู่บ้านที่ n (index 0 = หมู่บ้านแรก)
   village_cp_thresholds: [0, 2000, 8000, 20000, 40000, 70000, 110000, 160000, 220000, 300000]
   settlers_needed: 3
+
+upgrades:                          # อัปเกรดหน่วยที่โรงตีเหล็ก (T22)
+  bonus_per_level: 0.015           # โจมตีและป้องกัน +1.5% ต่อเลเวล
+  max_level: 20                    # และไม่เกินเลเวลโรงตีเหล็กของหมู่บ้าน
+  cost_unit_multiple: 10           # ราคาเลเวล 1 = ราคาหน่วย x 10
+  cost_growth: 1.3                 # cost(L) = base * growth^(L-1)
+  time_base_s: 1800                # เวลาเลเวล 1 ที่ 1x
+  time_growth: 1.2                 # time(L) = base * growth^(L-1) / speed
+  unit_types: [inf, cav, siege]    # ชนิดหน่วยที่อัปเกรดได้
 ```
 
 ### 5.2 `buildings.yaml`
@@ -942,6 +951,7 @@ SQLAlchemy 2.0 (`realm/db/models.py`) + alembic migration แรก `0001_initia
 | **movements** | id PK, world_id FK, player_id FK, from_village_id FK, to_x INT, to_y INT, to_village_id BIGINT NULL, mission TEXT, units JSONB, loot JSONB default '{}', catapult_target TEXT NULL, departed_at, arrive_at, status TEXT default 'moving' ('moving'/'done') | ขากลับเป็นแถวใหม่ mission='return' |
 | **events** | id PK, world_id FK, type TEXT, due_at, payload JSONB, status TEXT default 'pending' ('pending'/'done'/'failed'), attempts INT default 0, last_error TEXT NULL, created_at | INDEX(world_id,status,due_at) |
 | **reports** | id PK, player_id FK, kind TEXT ('battle','scout','reinforce','settle','info'), title TEXT, data JSONB, is_read BOOL default false, created_at | INDEX(player_id,created_at DESC) |
+| **unit_upgrades** | village_id FK, unit TEXT, level INT default 0, upgrading_to INT NULL, finishes_at NULL; PK(village_id,unit) | เพิ่มใน migration 0002 (T22); อัปเกรดทีละหน่วยต่อหมู่บ้าน เสร็จแบบ lazy เมื่อ finishes_at <= now |
 
 ดัชนีเพิ่ม: `movements(to_village_id, status)`, `movements(from_village_id, status)`, `troops(location_village_id)`, `troops(home_village_id)`, `bot_profiles(next_think_at)`
 

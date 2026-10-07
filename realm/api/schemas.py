@@ -33,6 +33,12 @@ class TrainBody(BaseModel):
     count: int
 
 
+class UpgradeBody(BaseModel):
+    """Body of POST /api/villages/{id}/upgrade."""
+
+    unit: str
+
+
 class SendBody(BaseModel):
     """Body of POST /api/villages/{id}/send and /send/preview."""
 

@@ -233,3 +233,15 @@ class Report(Base):
     data: Mapped[dict] = mapped_column(JSONB, nullable=False)
     is_read: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class UnitUpgrade(Base):
+    """Smithy upgrade level of one unit type in one village (T22)."""
+
+    __tablename__ = "unit_upgrades"
+
+    village_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("villages.id"), primary_key=True)
+    unit: Mapped[str] = mapped_column(Text, primary_key=True)
+    level: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    upgrading_to: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    finishes_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

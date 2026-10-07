@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from realm.api import ws
-from realm.api.routes import admin, military, reports, state, villages, world
+from realm.api.routes import admin, military, reports, smithy, state, villages, world
 from realm.services.errors import FORBIDDEN, NOT_FOUND, WORLD_ENDED, GameError
 
 _STATUS_BY_CODE = {
@@ -48,6 +48,7 @@ def create_app(serve_static: bool = True) -> FastAPI:
     app.include_router(state.router, prefix="/api")
     app.include_router(villages.router, prefix="/api")
     app.include_router(military.router, prefix="/api")
+    app.include_router(smithy.router, prefix="/api")
     app.include_router(world.router, prefix="/api")
     app.include_router(reports.router, prefix="/api")
     app.include_router(admin.router, prefix="/api")

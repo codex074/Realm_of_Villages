@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 
 from realm.core.config import GameConfig
 from realm.core.types import Mission, Res, Units
-from realm.core.units import unit_defense
+from realm.core.units import unit_defense, upgrade_multiplier
 
 
 @dataclass
@@ -15,6 +15,7 @@ class ArmyGroup:
     tribe: str
     units: Units
     owner_ref: int | None = None  # back-reference id (e.g. home_village_id), used by services
+    upgrades: dict[str, int] = field(default_factory=dict)  # unit -> smithy upgrade level
 
 
 @dataclass
@@ -45,13 +46,17 @@ class BattleResult:
     loyalty_damage: int
 
 
-def _attack_split(units: Units, cfg: GameConfig) -> tuple[float, float]:
+def _attack_split(group: ArmyGroup, cfg: GameConfig) -> tuple[float, float]:
     """(A_inf, A_cav) of an army: sum of attack*count split by the cav unit type."""
     a_inf = sum(
-        cfg.units[u].attack * n for u, n in units.items() if n > 0 and cfg.units[u].type != "cav"
+        cfg.units[u].attack * upgrade_multiplier(group.upgrades.get(u, 0), cfg) * n
+        for u, n in group.units.items()
+        if n > 0 and cfg.units[u].type != "cav"
     )
     a_cav = sum(
-        cfg.units[u].attack * n for u, n in units.items() if n > 0 and cfg.units[u].type == "cav"
+        cfg.units[u].attack * upgrade_multiplier(group.upgrades.get(u, 0), cfg) * n
+        for u, n in group.units.items()
+        if n > 0 and cfg.units[u].type == "cav"
     )
     return a_inf, a_cav
 
@@ -64,7 +69,7 @@ def _defense_split(groups: list[ArmyGroup], cfg: GameConfig) -> tuple[float, flo
         for u, n in group.units.items():
             if n <= 0:
                 continue
-            def_inf, def_cav = unit_defense(u, group.tribe, cfg)
+            def_inf, def_cav = unit_defense(u, group.tribe, cfg, group.upgrades.get(u, 0))
             d_inf += def_inf * n
             d_cav += def_cav * n
     return d_inf, d_cav
@@ -92,7 +97,7 @@ def _siege_damage(level: int, survivors: int, per_level: int) -> int:
 
 def resolve_battle(inp: BattleInput, cfg: GameConfig, rng: random.Random) -> BattleResult:
     """Resolve an ATTACK or RAID battle between one attacker and all defender groups."""
-    a_inf, a_cav = _attack_split(inp.attacker.units, cfg)
+    a_inf, a_cav = _attack_split(inp.attacker, cfg)
     a = a_inf + a_cav
     d_inf, d_cav = _defense_split(inp.defenders, cfg)
 

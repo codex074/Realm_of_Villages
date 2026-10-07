@@ -1,0 +1,25 @@
+{
+  "id": "T22c",
+  "title": "api + web: smithy unit upgrades",
+  "spec": ["1165-1218", "1219-1248"],
+  "read": [
+    "realm/api/main.py",
+    "realm/api/deps.py",
+    "realm/api/schemas.py",
+    "realm/api/routes/military.py",
+    "realm/services/smithy.py",
+    "realm/services/views.py",
+    "web/js/views/slotpanel.js",
+    "tests/api/test_api_phase1.py"
+  ],
+  "write": [
+    "realm/api/routes/smithy.py",
+    "realm/api/schemas.py",
+    "realm/api/main.py",
+    "web/js/views/slotpanel.js",
+    "tests/api/test_api_smithy.py"
+  ],
+  "test_cmd": "uv run pytest tests -q -rs && find web -name '*.js' -print0 | xargs -0 -n1 node --check",
+  "criteria": "EDITING RULE: realm/api/main.py, realm/api/schemas.py and web/js/views/slotpanel.js already exist and contain proofread Thai strings: change them ONLY with small targeted Edit operations (never rewrite whole files). New Python goes into the NEW file realm/api/routes/smithy.py.\n== API ==\nrealm/api/routes/smithy.py with `router = APIRouter()` (included in main.py with prefix '/api'): GET /villages/{village_id}/upgrades -> list[UpgradeOption] (smithy.get_upgrade_options(s, player.id, village_id, now, cfg)); POST /villages/{village_id}/upgrade body UpgradeBody {unit: str} -> UpgradeOption of that unit after starting (smithy.start_upgrade(...), then return the matching option from get_upgrade_options); guarded by require_running; add `UpgradeBody(BaseModel): unit: str` to schemas.py. Sync `def` routes with the same Depends style as routes/military.py.\nTests tests/api/test_api_smithy.py (TestClient(create_app(serve_static=False)) + dependency_overrides[get_session] yielding the rollback `s` fixture, like tests/api/test_api_phase1.py; world via POST /api/admin/new-world {speed:1, bot_count:0, seed:1, player_name:'ผู้เล่น', tribe:'stonehold'}; a smithy level 1 Building at slot 21 inserted directly with `s`): GET upgrades -> 200 list of 6 options (units spearman, swordsman, light_cavalry, heavy_cavalry, ram, catapult) with the spearman option level 0, target_level 1, cost {'wood':700,'stone':500,'iron':300,'food':500}, time_s 1800.0; POST upgrade {unit:'spearman'} -> 200 option with finishes_at set and affordable False; second POST (any unit) -> 400 QUEUE_FULL; POST with unit 'scout' -> 400 INVALID_UNITS; unknown village -> 404; village with no smithy -> 400 REQUIREMENTS_NOT_MET; with the world status 'ended' POST -> 409 WORLD_ENDED while GET still 200.\n== Web ==\nIn web/js/views/slotpanel.js `openSlotPanel`: when the slot's current building type is 'smithy', fetch `api.get('/villages/' + ctx.villageId + '/upgrades')` (list of {unit, name_th, level, target_level, cost, time_s, missing, affordable, finishes_at}) and append to the sheet a section with heading 'อัปเกรดหน่วย': one block per option showing '<name_th> เลเวล <level>'; when target_level is not null: the four costs (reuse the existing cost rows helper; costs shown with .negative when the village lacks them), the time via fmtDuration, the missing lines (.negative), and a primary button 'อัปเกรด' disabled when not affordable; click -> `api.post('/villages/' + ctx.villageId + '/upgrade', {unit})`, ctx.toast('เริ่มอัปเกรดแล้ว'), `await ctx.refresh()`; ApiError -> ctx.toast(err.message, true) and re-enable the button; when finishes_at is not null show a `<span class=\"countdown\" data-countdown=ISO>` with the remaining time; when target_level is null show the text 'เลเวลสูงสุดแล้ว'; when the list is empty show 'ไม่มีหน่วยที่อัปเกรดได้'. A failing fetch must not break the rest of the panel (ignore the error).",
+  "notes": "- Thai strings: use ONLY these (copy letter by letter; proofread): 'อัปเกรดหน่วย', 'อัปเกรด', 'เริ่มอัปเกรดแล้ว', 'เลเวลสูงสุดแล้ว', 'ไม่มีหน่วยที่อัปเกรดได้', and the template '<name_th> เลเวล <level>' (the word เลเวล). Do not retype any other Thai in the existing files.\n- smithy service: realm.services.smithy.get_upgrade_options(s, player_id, village_id, now, cfg) and start_upgrade(s, player_id, village_id, unit, now, cfg). The route code must also use deps get_player, get_now, get_cfg, get_session, require_running.\n- Reuse existing imports in slotpanel.js (h, api, ApiError, fmtNum, fmtDuration, countdown); keep the existing building/upgrade and training behaviour untouched.\n- Run the test_cmd (pytest + node --check) and fix failures."
+}

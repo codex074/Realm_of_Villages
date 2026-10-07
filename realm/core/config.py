@@ -72,6 +72,16 @@ class CultureSection(_Model):
     settlers_needed: int
 
 
+class UpgradesSection(_Model):
+    bonus_per_level: float
+    max_level: int
+    cost_unit_multiple: float
+    cost_growth: float
+    time_base_s: float
+    time_growth: float
+    unit_types: list[str]
+
+
 class BuildingDef(_Model):
     key: str
     name_th: str
@@ -146,6 +156,7 @@ class GameConfig(_Model):
     construction: ConstructionSection
     combat: CombatSection
     culture: CultureSection
+    upgrades: UpgradesSection
     buildings: dict[str, BuildingDef]
     units: dict[str, UnitDef]
     tribes: dict[str, TribeDef]

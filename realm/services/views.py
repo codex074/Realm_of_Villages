@@ -122,6 +122,20 @@ class TrainOption(BaseModel):
     max_affordable: int
 
 
+class UpgradeOption(BaseModel):
+    """A unit that can be upgraded at the smithy."""
+
+    unit: str
+    name_th: str
+    level: int
+    target_level: int | None
+    cost: dict[str, float] | None
+    time_s: float | None
+    missing: list[str]
+    affordable: bool
+    finishes_at: datetime | None
+
+
 class SendPreview(BaseModel):
     """A preview of sending troops before confirmation."""
 
