@@ -28,7 +28,7 @@
 | T13b | merged | 1 | ผ่านรอบแรก; Claude แก้ลูปหักทหารตาย (sloppy แต่ผลถูก); Qwen แก้ test_worker เพราะ stub MOVEMENT_ARRIVE เปลี่ยน (wrapper หยุดด้วย exit 4 ครั้งเดียว ตรวจแล้วชอบธรรม) |
 | T14 | merged | 1 | ผ่านรอบแรก ไม่ต้องแก้; ข้อความไทยถูกครบ; ป้องกัน starvation event วนไม่รู้จบแล้ว |
 | T15a | merged | 1 | ผ่านรอบแรก ไม่ต้องแก้ (277 tests) |
-| T15b | todo | 0 | web: map + rally |
+| T15b | merged | 1 | Claude แก้คำไทย 3 จุด (มีย, สุม, เวลาถิง); โครงสร้างถูก |
 | T15c | todo | 0 | web: reports + ranking + center training + app badge |
 | T08 | merged | 1 | Claude แก้ healthcheck (ขาด "CMD"); build+up จริงผ่าน: migrate, เว็บ/API/WS ผ่าน Caddy :8080, engine ทำงาน, backup.sh ใช้ได้ |
 
