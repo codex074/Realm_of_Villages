@@ -188,6 +188,16 @@ git push            # ถ้ามี remote
 
 จากนั้นอัปเดต `STATUS.md` และ commit
 
+### 5.7b ทำงานขนาน + ชุด test เร็ว (ผู้ใช้สั่งเมื่อ 2026-10-07 ให้เร่งความเร็ว)
+
+- งานที่ไม่แตะไฟล์เดียวกัน ส่ง Qwen ขนานกันได้ด้วย `scripts/wt.sh` (worktree + ฐานข้อมูลทดสอบแยกต่อ task):
+  `./scripts/wt.sh new T27` → `./scripts/wt.sh run T27 .agents/tasks/T27.json` → รีวิวด้วย `git -C ../rov-worktrees/T27 diff main` และ `./scripts/wt.sh test T27 -q` → `./scripts/wt.sh merge T27` แล้ว commit → `./scripts/wt.sh rm T27`
+  (ไฟล์ task JSON ต้อง commit บน main ก่อน `new`)
+- ห้ามรัน pytest หรือ commit ใน checkout เดียวกับที่ Qwen กำลังทำงานอยู่ (ชน DB / ไฟล์ค้างติดเข้า commit)
+- ใส่ `test_cmd` ของ task ให้แคบ (เฉพาะไฟล์ test ที่เกี่ยวข้อง) ชุดเต็มรันครั้งเดียวตอนรีวิว
+- แก้เล็กๆ ที่ไฟล์เดียวให้ Claude ทำเอง ไม่ต้องส่ง Qwen
+- จำลองยาว (`realm simulate`) ให้ใช้ฐานข้อมูลแยก (เช่น `realm_sim` ใน container db_test) ไม่ใช่ `realm_test`
+
 ### 5.8 แจ้งเตือนผู้ใช้ทุกครั้งที่ merge task (ผู้ใช้สั่งเมื่อ 2026-10-07)
 
 หลัง merge และ push แต่ละ task ให้ส่งข้อความผ่าน Hermes (bot cody) ไปที่ Telegram DM ของผู้ใช้:
