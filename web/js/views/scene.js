@@ -1628,3 +1628,6 @@ function renderLand(el0, ctx) {
   svg.append(badges);
   return svg;
 }
+
+// Drawing helpers shared with the map page.
+export const art = { el, rect, poly, line, ellipse, text, shadow, pine, tree, bush, rock, mountain, hall, flag, addDefs, mulberry32 };

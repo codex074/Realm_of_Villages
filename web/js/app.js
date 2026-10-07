@@ -2,7 +2,7 @@
 
 import { api, ApiError } from './api.js';
 import { syncClock, gameNow, countdown, remainingMs } from './clock.js';
-import { fmtNum, fmtTime } from './format.js';
+import { fmtNum, fmtRate, fmtTime } from './format.js';
 import { onChanged } from './ws.js';
 import { h, clear } from './dom.js';
 
@@ -242,6 +242,50 @@ async function refresh() {
 
 // ---- Top bar ----
 
+const RES_NAMES = { wood: 'ไม้', stone: 'หิน', iron: 'เหล็ก', food: 'อาหาร' };
+const resTip = h('div', { class: 'res-tip', hidden: true });
+document.body.append(resTip);
+let resTipTimer = null;
+
+// Popover under a resource pill: total hourly production and storage.
+function showResTip(k, pill) {
+  if (!village) return;
+  const rate = village.rates[k] ?? 0;
+  const hours = (gameNow().getTime() - villageFetchedAtMs) / 3600000;
+  const cap = village.capacity[k] ?? 0;
+  const have = Math.min(Math.max((village.resources[k] ?? 0) + rate * hours, 0), cap);
+  clear(resTip);
+  resTip.append(
+    h('div', { class: 'res-tip-main' }, `${RES_NAMES[k]} `, h('b', { class: rate < 0 ? 'negative' : '' }, `${rate >= 0 ? '+' : ''}${fmtRate(rate)}/ชม.`)),
+    h('div', { class: 'res-tip-sub' }, `คลัง ${fmtNum(have)} / ${fmtNum(cap)}`),
+  );
+  const r = pill.getBoundingClientRect();
+  resTip.style.left = `${Math.max(6, Math.min(window.innerWidth - 170, r.left))}px`;
+  resTip.style.top = `${r.bottom + 6}px`;
+  resTip.hidden = false;
+  clearTimeout(resTipTimer);
+  resTipTimer = setTimeout(() => {
+    resTip.hidden = true;
+  }, 4000);
+}
+
+for (const k of RES_KEYS) {
+  const pill = resEls[k].closest('.res');
+  pill.style.cursor = 'pointer';
+  pill.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!resTip.hidden && resTip.dataset.res === k) {
+      resTip.hidden = true;
+      return;
+    }
+    resTip.dataset.res = k;
+    showResTip(k, pill);
+  });
+}
+document.addEventListener('click', () => {
+  resTip.hidden = true;
+});
+
 // Tick the four resource values once per second.
 function tickResources() {
   if (!state || !village) return;
@@ -252,6 +296,10 @@ function tickResources() {
     resEls[k].textContent = fmtNum(capped);
   }
   resEls.food.classList.toggle('negative', (village.rates.food ?? 0) < 0);
+  for (const k of RES_KEYS) {
+    const rate = village.rates[k] ?? 0;
+    resEls[k].closest('.res').title = `${RES_NAMES[k]} ${rate >= 0 ? '+' : ''}${fmtRate(rate)} ต่อชม.`;
+  }
 }
 
 // Tick the clock display once per second.
