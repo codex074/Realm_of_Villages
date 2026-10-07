@@ -118,7 +118,7 @@ def build_prompt(task: dict, feedback: str | None) -> str:
 
 def clean_env() -> dict[str, str]:
     """Minimal env: host-app ANTHROPIC_*/CLAUDE_* vars break the 9arm gateway auth."""
-    keep = ("HOME", "PATH", "LANG", "LC_ALL", "TMPDIR", "USER", "SHELL")
+    keep = ("HOME", "PATH", "LANG", "LC_ALL", "TMPDIR", "USER", "SHELL", "REALM_TEST_DATABASE_URL")
     env = {k: os.environ[k] for k in keep if k in os.environ}
     env["TERM"] = "dumb"
     return env
