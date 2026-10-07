@@ -76,6 +76,7 @@ class EventType(StrEnum):
     MOVEMENT_ARRIVE = "movement_arrive"
     STARVATION_CHECK = "starvation_check"
     ROUND_END = "round_end"
+    OASIS_RESPAWN = "oasis_respawn"
 
 
 class TileKind(StrEnum):

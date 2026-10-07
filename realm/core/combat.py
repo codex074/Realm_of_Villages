@@ -16,6 +16,9 @@ class ArmyGroup:
     units: Units
     owner_ref: int | None = None  # back-reference id (e.g. home_village_id), used by services
     upgrades: dict[str, int] = field(default_factory=dict)  # unit -> smithy upgrade level
+    stats: dict[str, tuple[float, float]] | None = (
+        None  # unit -> (def_inf, def_cav); fixed stats (animals)
+    )
 
 
 @dataclass
@@ -69,7 +72,10 @@ def _defense_split(groups: list[ArmyGroup], cfg: GameConfig) -> tuple[float, flo
         for u, n in group.units.items():
             if n <= 0:
                 continue
-            def_inf, def_cav = unit_defense(u, group.tribe, cfg, group.upgrades.get(u, 0))
+            if group.stats is not None:
+                def_inf, def_cav = group.stats[u]
+            else:
+                def_inf, def_cav = unit_defense(u, group.tribe, cfg, group.upgrades.get(u, 0))
             d_inf += def_inf * n
             d_cav += def_cav * n
     return d_inf, d_cav

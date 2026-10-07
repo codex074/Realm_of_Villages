@@ -65,6 +65,18 @@ function fillInfo(panel, ctx, tile, center) {
   clear(panel);
   panel.append(h('div', { class: 'list-row' }, `พิกัด (${tile.x}, ${tile.y})`));
   panel.append(h('div', { class: 'list-row' }, TILE_LABELS[tile.kind] ?? tile.kind));
+  if (tile.oasis) {
+    const resLabels = { wood: 'ไม้', stone: 'หิน', iron: 'เหล็ก', food: 'อาหาร' };
+    panel.append(
+      h('div', { class: 'list-row' }, `โบนัสผลิต: ${resLabels[tile.oasis_type] ?? tile.oasis_type}`),
+    );
+    panel.append(h('div', { class: 'list-row' }, `สัตว์ป่า: ${tile.oasis.animals}`));
+    if (tile.oasis.owner_village_id != null) {
+      panel.append(
+        h('div', { class: 'list-row' }, tile.oasis.owned_by_me ? 'ของคุณ' : 'มีเจ้าของ'),
+      );
+    }
+  }
   const v = tile.village;
   if (v) {
     const tribeName = (ctx.meta.tribes || {})[v.tribe]?.name_th ?? v.tribe;

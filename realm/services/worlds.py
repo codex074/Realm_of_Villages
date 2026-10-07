@@ -1,5 +1,6 @@
 """World lifecycle services: creation, current world, pause/resume (BUILD.md 8.8)."""
 
+import math
 import random
 from datetime import datetime, timedelta
 
@@ -11,7 +12,7 @@ from realm.core.clock import game_now
 from realm.core.config import GameConfig, ResAmount
 from realm.core.names import BOT_NAMES
 from realm.core.slots import initial_buildings
-from realm.core.types import EventType
+from realm.core.types import EventType, TileKind
 from realm.db.models import BotProfile, Building, Player, Tile, Village, World
 from realm.services import events, notify, ranking, reports
 from realm.services.errors import INVALID_TARGET, NOT_FOUND, GameError
@@ -82,6 +83,11 @@ def create_world(
                 "kind": t.kind.value,
                 "layout": t.layout,
                 "oasis_type": t.oasis_type,
+                "animals": (
+                    worldgen.oasis_animals(seed, t.x, t.y, cfg)
+                    if t.kind == TileKind.OASIS
+                    else None
+                ),
             }
             for t in tiles
         ],
@@ -165,6 +171,13 @@ def create_world(
     s.flush()
 
     events.schedule(s, world.id, EventType.ROUND_END, ends_at, {})
+    events.schedule(
+        s,
+        world.id,
+        EventType.OASIS_RESPAWN,
+        game_epoch + timedelta(seconds=cfg.oasis.respawn_hours * 3600 / speed),
+        {},
+    )
     s.flush()
     return world
 
@@ -257,6 +270,42 @@ def end_round(s: Session, world_id: int, now: datetime, cfg: GameConfig) -> None
     s.flush()
 
 
+def respawn_oases(s: Session, world_id: int, now: datetime, cfg: GameConfig) -> None:
+    """OASIS_RESPAWN: regrow animals on unowned oases and schedule the next tick."""
+    world = s.get(World, world_id)
+    if world is None or world.status != "running":
+        return
+    tiles = list(
+        s.scalars(
+            select(Tile).where(
+                Tile.world_id == world_id,
+                Tile.kind == TileKind.OASIS.value,
+                Tile.oasis_owner_village_id.is_(None),
+            )
+        ).all()
+    )
+    for tile in tiles:
+        target = worldgen.oasis_animals(world.seed, tile.x, tile.y, cfg)
+        current = tile.animals or {}
+        new = {
+            key: min(
+                target[key],
+                current.get(key, 0) + math.ceil(target[key] * cfg.oasis.respawn_fraction),
+            )
+            for key in target
+        }
+        if new != current:
+            tile.animals = new
+    events.schedule(
+        s,
+        world_id,
+        EventType.OASIS_RESPAWN,
+        now + timedelta(seconds=cfg.oasis.respawn_hours * 3600 / world.speed),
+        {},
+    )
+    s.flush()
+
+
 def get_map(
     s: Session,
     world_id: int,
@@ -328,6 +377,17 @@ def get_map(
                 "is_mine": village.player_id == player_id,
                 "is_bot": owner.is_bot,
             }
+        oasis_dict: dict | None = None
+        if tile is not None and tile.kind == TileKind.OASIS.value:
+            owned_by_me = False
+            if tile.oasis_owner_village_id is not None:
+                owner_village = s.get(Village, tile.oasis_owner_village_id)
+                owned_by_me = owner_village is not None and owner_village.player_id == player_id
+            oasis_dict = {
+                "owner_village_id": tile.oasis_owner_village_id,
+                "owned_by_me": owned_by_me,
+                "animals": sum((tile.animals or {}).values()),
+            }
         out_tiles.append(
             MapTile(
                 x=x,
@@ -336,6 +396,7 @@ def get_map(
                 layout=tile.layout if tile is not None else None,
                 oasis_type=tile.oasis_type if tile is not None else None,
                 village=village_dict,
+                oasis=oasis_dict,
             )
         )
     return MapView(size=size, center=Coord(x=center_x, y=center_y), radius=r, tiles=out_tiles)

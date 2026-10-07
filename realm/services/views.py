@@ -155,6 +155,7 @@ class MapTile(BaseModel):
     layout: str | None
     oasis_type: str | None
     village: dict | None
+    oasis: dict | None = None
 
 
 class MapView(BaseModel):

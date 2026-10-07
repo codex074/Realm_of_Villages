@@ -2,12 +2,12 @@
 
 from datetime import datetime
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from realm.core.config import GameConfig
 from realm.core.types import EventType
-from realm.db.models import Movement, Player, TrainingQueue, Troop, Village
+from realm.db.models import Movement, Player, Tile, TrainingQueue, Troop, Village
 from realm.services import events, notify, reports, villages
 
 
@@ -39,6 +39,11 @@ def conquer_village(
     old_owner = s.get(Player, target.player_id)
     villages.settle_player_culture(s, old_owner, now, cfg)
     villages.settle_player_culture(s, new_owner, now, cfg)
+    s.execute(
+        update(Tile)
+        .where(Tile.oasis_owner_village_id == target.id)
+        .values(oasis_owner_village_id=None)
+    )
     s.execute(delete(Troop).where(Troop.home_village_id == target.id))
     for mv in s.scalars(
         select(Movement).where(Movement.from_village_id == target.id, Movement.status == "moving")

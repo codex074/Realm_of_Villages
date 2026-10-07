@@ -37,7 +37,7 @@
 | T20b | merged | 0 | Claude ทำเอง (แก้เล็ก 3 ไฟล์เว็บ); เพิ่ม config combat.conquest_loyalty สำหรับ T21 |
 | T21 | merged | 1 | ผ่านรอบแรก ไม่ต้องแก้; ข้อความไทยถูกครบเพราะให้ Qwen Edit จุดเล็ก + ไฟล์ใหม่ (conquest.py) แทนเขียนไฟล์ใหญ่ซ้ำ |
 | T22 | merged | 2 | a=Claude (table+migration+config), b,c=Qwen รอบแรกผ่านไม่ต้องแก้ (Edit จุดเล็ก → ข้อความไทยไม่เพี้ยน); ตัวเลข balance upgrades เป็นค่าที่ Claude ตั้งเอง รอผู้ใช้ทบทวน |
-| T23 | todo | 0 | oasis |
+| T23 | merged | 2 | a,b=Qwen รอบแรกผ่าน; Claude แก้ compute_rates ให้ใช้ query เดียวแทน 4 query (hot path), c=Claude ทำเอง (map panel); ตัวเลขสัตว์/โบนัสเป็นค่าที่ Claude ตั้งเอง รอทบทวน |
 | T24 | todo | 0 | bots full |
 | T25 | todo | 0 | market |
 | T26 | todo | 0 | endgame |

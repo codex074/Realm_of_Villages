@@ -144,9 +144,13 @@ def test_engine_round_end_ends_world(s, cfg: GameConfig, t0: datetime) -> None:
         select(Event).where(Event.world_id == world.id, Event.type == EventType.ROUND_END.value)
     ).one()
 
-    assert worker.process_next(s, world, world.ends_at, cfg) is True
-    s.refresh(ev)
-    assert ev.status == "done"
+    # The earlier OASIS_RESPAWN ticks (T23a) are due before ROUND_END, so process
+    # events until the ROUND_END one runs.
+    while True:
+        assert worker.process_next(s, world, world.ends_at, cfg) is True
+        s.refresh(ev)
+        if ev.status == "done":
+            break
     s.refresh(world)
     assert world.status == "ended"
     assert world.winner_player_id == bot1.id

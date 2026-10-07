@@ -60,3 +60,14 @@ upgrades:                          # smithy unit upgrades (T22)
   time_base_s: 1800                # level-1 time at 1x
   time_growth: 1.2                 # time(L) = base * growth^(L-1) / speed
   unit_types: [inf, cav, siege]    # unit types that can be upgraded
+
+oasis:                             # oases, wild animals and their bonus (T23)
+  bonus: 0.25                      # +25% production of the oasis resource per owned oasis
+  radius: 3                        # an oasis must lie within this distance of the owning village
+  max_per_village: 3
+  respawn_hours: 12                # game hours between animal respawn ticks (divided by world speed)
+  respawn_fraction: 0.25           # fraction of the full animal count restored per tick
+  animals:                         # NPC defenders (they never attack)
+    rat:    {name_th: หนูป่า, def_inf: 25, def_cav: 20, min: 8, max: 20}
+    spider: {name_th: แมงมุมยักษ์, def_inf: 40, def_cav: 60, min: 4, max: 12}
+    boar:   {name_th: หมูป่า, def_inf: 60, def_cav: 40, min: 2, max: 8}

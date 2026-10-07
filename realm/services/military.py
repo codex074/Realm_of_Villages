@@ -12,7 +12,7 @@ from realm.core import units as units_core
 from realm.core.config import GameConfig
 from realm.core.types import EventType, Mission, Res, TileKind, Units
 from realm.db.models import Building, Movement, Player, Tile, Troop, Village, World
-from realm.services import conquest, events, notify, reports, smithy, villages
+from realm.services import conquest, events, notify, oasis, reports, smithy, villages
 from realm.services.errors import (
     FORBIDDEN,
     INVALID_TARGET,
@@ -140,7 +140,19 @@ def _check_send(
                 problems.append((NOT_ENOUGH_CULTURE, NOT_ENOUGH_CULTURE_TH))
     elif mission in HOSTILE_MISSIONS:
         if target is None:
-            problems.append((INVALID_TARGET, NO_TARGET_VILLAGE_TH))
+            tile = s.get(Tile, (world.id, tx, ty))
+            if (
+                mission in (Mission.ATTACK, Mission.RAID)
+                and tile is not None
+                and tile.kind == TileKind.OASIS.value
+            ):
+                problem = oasis.oasis_send_problem(
+                    s, player_id, village, world, tx, ty, mission, cfg
+                )
+                if problem is not None:
+                    problems.append(problem)
+            else:
+                problems.append((INVALID_TARGET, NO_TARGET_VILLAGE_TH))
         elif target.player_id == player_id:
             problems.append((INVALID_TARGET, SELF_TARGET_TH))
         else:
@@ -391,6 +403,8 @@ def _resolve_battle_arrival(
     s: Session, m: Movement, world: World, now: datetime, cfg: GameConfig
 ) -> None:
     """Resolve an attack/raid arrival: battle, plunder, reports and the return trip."""
+    if m.to_village_id is None and oasis.resolve_oasis_arrival(s, m, world, now, cfg):
+        return
     target = s.get(Village, m.to_village_id) if m.to_village_id is not None else None
     if target is None:
         create_return_movement(

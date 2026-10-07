@@ -82,6 +82,23 @@ class UpgradesSection(_Model):
     unit_types: list[str]
 
 
+class AnimalDef(_Model):
+    name_th: str
+    def_inf: float
+    def_cav: float
+    min: int
+    max: int
+
+
+class OasisSection(_Model):
+    bonus: float
+    radius: int
+    max_per_village: int
+    respawn_hours: float
+    respawn_fraction: float
+    animals: dict[str, AnimalDef]
+
+
 class BuildingDef(_Model):
     key: str
     name_th: str
@@ -157,6 +174,7 @@ class GameConfig(_Model):
     combat: CombatSection
     culture: CultureSection
     upgrades: UpgradesSection
+    oasis: OasisSection
     buildings: dict[str, BuildingDef]
     units: dict[str, UnitDef]
     tribes: dict[str, TribeDef]

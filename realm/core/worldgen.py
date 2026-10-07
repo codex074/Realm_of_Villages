@@ -63,6 +63,12 @@ def generate_tiles(seed: int, cfg: GameConfig) -> list[TileSpec]:
     return tiles
 
 
+def oasis_animals(seed: int, x: int, y: int, cfg: GameConfig) -> dict[str, int]:
+    """Deterministic starting animal counts for one oasis tile."""
+    rng = random.Random(f"{seed}:oasis:{x}:{y}")
+    return {key: rng.randint(a.min, a.max) for key, a in cfg.oasis.animals.items()}
+
+
 def pick_spawns(
     tiles: list[TileSpec],
     seed: int,

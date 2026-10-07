@@ -8,12 +8,13 @@ from sqlalchemy.orm import Session
 
 from realm.core import construction, economy, slots
 from realm.core.config import GameConfig
-from realm.core.types import EventType, Res
+from realm.core.types import RESOURCE_KEYS, EventType, Res
 from realm.db.models import (
     Building,
     BuildQueue,
     Movement,
     Player,
+    Tile,
     TrainingQueue,
     Troop,
     Village,
@@ -85,6 +86,20 @@ def compute_rates(s: Session, village: Village, now: datetime, cfg: GameConfig) 
     rows = _building_rows(s, village.id)
     field_levels = [(b.type, b.level) for b in rows if cfg.buildings[b.type].kind == "field"]
     gross = economy.gross_production(field_levels, world.speed, player.production_mult, cfg)
+    oasis_counts = dict(
+        s.execute(
+            select(Tile.oasis_type, func.count(Tile.world_id))
+            .where(Tile.oasis_owner_village_id == village.id)
+            .group_by(Tile.oasis_type)
+        ).all()
+    )
+    if oasis_counts:
+        gross = Res(
+            *(
+                getattr(gross, k) * (1.0 + cfg.oasis.bonus * oasis_counts.get(k, 0))
+                for k in RESOURCE_KEYS
+            )
+        )
     pop = economy.population([(b.type, b.level) for b in rows], cfg)
     upkeep = 0.0
     for t in s.scalars(select(Troop).where(Troop.home_village_id == village.id)).all():

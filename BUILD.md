@@ -290,6 +290,17 @@ upgrades:                          # อัปเกรดหน่วยที�
   time_base_s: 1800                # เวลาเลเวล 1 ที่ 1x
   time_growth: 1.2                 # time(L) = base * growth^(L-1) / speed
   unit_types: [inf, cav, siege]    # ชนิดหน่วยที่อัปเกรดได้
+
+oasis:                             # oases, wild animals and their bonus (T23)
+  bonus: 0.25                      # +25% production of the oasis resource per owned oasis
+  radius: 3                        # an oasis must lie within this distance of the owning village
+  max_per_village: 3
+  respawn_hours: 12                # game hours between animal respawn ticks (divided by world speed)
+  respawn_fraction: 0.25           # fraction of the full animal count restored per tick
+  animals:                         # NPC defenders (they never attack)
+    rat:    {name_th: หนูป่า, def_inf: 25, def_cav: 20, min: 8, max: 20}
+    spider: {name_th: แมงมุมยักษ์, def_inf: 40, def_cav: 60, min: 4, max: 12}
+    boar:   {name_th: หมูป่า, def_inf: 60, def_cav: 40, min: 2, max: 8}
 ```
 
 ### 5.2 `buildings.yaml`
@@ -1011,6 +1022,7 @@ def cancel_pending(s, world_id: int, etype: EventType, match: dict) -> int   # �
 | MOVEMENT_ARRIVE | `{"movement_id": int}` | `military.send_troops`, handler (ขากลับ) |
 | STARVATION_CHECK | `{"village_id": int}` | `villages.after_change` |
 | ROUND_END | `{}` | `worlds.create_world` |
+| OASIS_RESPAWN | `{}` | `worlds.create_world`, handler เอง (T23) |
 
 ### 8.3 `services/notify.py`
 

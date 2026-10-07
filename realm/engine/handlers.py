@@ -41,10 +41,16 @@ def handle_round_end(s: Session, ev: Event, cfg: GameConfig) -> None:
     worlds.end_round(s, ev.world_id, ev.due_at, cfg)
 
 
+def handle_oasis_respawn(s: Session, ev: Event, cfg: GameConfig) -> None:
+    """Regrow oasis animals at the event's due time and schedule the next tick."""
+    worlds.respawn_oases(s, ev.world_id, ev.due_at, cfg)
+
+
 HANDLERS: dict[EventType, Handler] = {
     EventType.BUILD_COMPLETE: handle_build_complete,
     EventType.TRAIN_TICK: handle_train_tick,
     EventType.MOVEMENT_ARRIVE: handle_movement_arrive,
     EventType.STARVATION_CHECK: handle_starvation_check,
     EventType.ROUND_END: handle_round_end,
+    EventType.OASIS_RESPAWN: handle_oasis_respawn,
 }
