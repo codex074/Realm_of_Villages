@@ -12,7 +12,7 @@ from realm.core import units as units_core
 from realm.core.config import GameConfig
 from realm.core.types import EventType, Mission, Res, TileKind, Units
 from realm.db.models import Building, Movement, Player, Tile, Troop, Village, World
-from realm.services import events, notify, reports, villages
+from realm.services import conquest, events, notify, reports, villages
 from realm.services.errors import (
     FORBIDDEN,
     INVALID_TARGET,
@@ -495,6 +495,18 @@ def _resolve_battle_arrival(
         target.stone -= loot.stone
         target.iron -= loot.iron
         target.food -= loot.food
+    loyalty_info: dict | None = None
+    if result.loyalty_damage > 0:
+        loyalty_info = conquest.apply_loyalty(
+            s,
+            target=target,
+            attacker_player=attacker_player,
+            damage=result.loyalty_damage,
+            now=now,
+            cfg=cfg,
+        )
+        if loyalty_info["conquered"]:
+            survivors.pop("chief", None)
     if survivors:
         create_return_movement(
             s,
@@ -542,7 +554,7 @@ def _resolve_battle_arrival(
                 "after": catapult_after,
             }
         ),
-        "loyalty": None,
+        "loyalty": loyalty_info,
     }
     defender_title = f"ถูก{label}โดย {home.name}"
     recipient_players: dict[int, str] = {m.player_id: f"{label} {target.name}"}

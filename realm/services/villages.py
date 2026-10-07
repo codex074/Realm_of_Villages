@@ -111,6 +111,19 @@ def settle_village(s: Session, village: Village, now: datetime, cfg: GameConfig)
     village.stone = new.stone
     village.iron = new.iron
     village.food = new.food
+    if village.loyalty < 100.0:
+        palace_level = levels(s, village.id).get("palace", 0)
+        if palace_level > 0:
+            world = s.get(World, village.world_id)
+            elapsed_hours = (now - village.res_updated_at).total_seconds() / 3600
+            village.loyalty = min(
+                100.0,
+                village.loyalty
+                + palace_level
+                * cfg.combat.loyalty_regen_per_palace_level
+                * world.speed
+                * elapsed_hours,
+            )
     village.res_updated_at = now
     s.flush()
 
