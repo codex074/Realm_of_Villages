@@ -2,10 +2,49 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "realm-auth",
+      "name": "g3-api",
       "runtimeExecutable": "env",
-      "runtimeArgs": ["REALM_DATABASE_URL=postgresql+psycopg://realm_test:realm_test@localhost:5433/realm_web", "REALM_AUTH_REQUIRED=true", "REALM_API_HOST=127.0.0.1", "REALM_API_PORT=8765", "uv", "run", "realm", "api"],
+      "runtimeArgs": [
+        "REALM_DATABASE_URL=postgresql+psycopg://realm_test:realm_test@localhost:5433/realm_g3",
+        "REALM_AUTH_REQUIRED=true",
+        "REALM_API_HOST=127.0.0.1",
+        "REALM_API_PORT=8765",
+        "uv",
+        "run",
+        "realm",
+        "api"
+      ],
       "port": 8765
+    },
+    {
+      "name": "g3-engine",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "REALM_DATABASE_URL=postgresql+psycopg://realm_test:realm_test@localhost:5433/realm_g3",
+        "REALM_AUTH_REQUIRED=true",
+        "REALM_API_HOST=127.0.0.1",
+        "REALM_API_PORT=8765",
+        "uv",
+        "run",
+        "realm",
+        "engine"
+      ],
+      "port": 8766
+    },
+    {
+      "name": "g3-bots",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "REALM_DATABASE_URL=postgresql+psycopg://realm_test:realm_test@localhost:5433/realm_g3",
+        "REALM_AUTH_REQUIRED=true",
+        "REALM_API_HOST=127.0.0.1",
+        "REALM_API_PORT=8765",
+        "uv",
+        "run",
+        "realm",
+        "bots"
+      ],
+      "port": 8767
     }
   ]
 }

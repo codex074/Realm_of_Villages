@@ -270,3 +270,9 @@ tr.me td { background: rgba(201, 162, 39, 0.28); font-weight: 700; }
 .chat-log { height: 180px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 6px; margin-bottom: 8px; background: rgba(255, 255, 255, 0.35); font-size: 13px; }
 .chat-msg { margin-bottom: 4px; word-break: break-word; }
 @media (max-width: 480px) { #account-name { display: none; } }
+
+/* ---------- Illustrated village scene ---------- */
+.scene-frame { overflow-x: auto; border: 3px solid var(--plank); border-radius: 12px; box-shadow: 0 3px 8px rgba(40, 25, 10, 0.35), inset 0 0 0 2px var(--gold); margin-bottom: 12px; background: #7fae4c; -webkit-overflow-scrolling: touch; }
+.scene { display: block; width: 100%; min-width: 580px; height: auto; }
+.scene .hit { transition: filter 0.12s; }
+.scene .hit:hover { filter: brightness(1.12) drop-shadow(0 0 6px rgba(255, 240, 160, 0.9)); }

@@ -1,10 +1,11 @@
 // Village view: fields grid, build queue, troops and movements (BUILD.md section 10).
 
 import { api, ApiError } from '../api.js';
-import { h, clear, icon } from '../dom.js';
+import { h, clear } from '../dom.js';
 import { countdown } from '../clock.js';
 import { fmtNum } from '../format.js';
-import { queuePanel, openSlotPanel } from './slotpanel.js';
+import { queuePanel } from './slotpanel.js';
+import { sceneFrame } from './scene.js';
 
 const RES_KEYS = ['wood', 'stone', 'iron', 'food'];
 const RES_LABELS = { wood: 'ไม้', stone: 'หิน', iron: 'เหล็ก', food: 'อาหาร' };
@@ -61,28 +62,6 @@ function cultureRow(ctx) {
   return h('div', { class: 'rates-row' }, `แต้มวัฒนธรรม: ${points} / ${next}`);
 }
 
-// One field slot cell (slots 1..18).
-function fieldCell(el, ctx, b) {
-  const meta = (ctx.meta.buildings || {})[b.type] || {};
-  const classes = ['slot'];
-  if (b.type) {
-    if (meta.produces) classes.push(meta.produces);
-    else classes.push('empty');
-  } else {
-    classes.push('empty');
-  }
-  if (ctx.village.build_queue.some((q) => q.slot === b.slot)) classes.push('building');
-  const cell = h(
-    'div',
-    { class: classes.join(' ') },
-    b.type ? icon(b.type, 'ico slot-icon') : null,
-    h('div', { class: 'slot-level' }, String(b.level)),
-    h('div', { class: 'slot-label' }, b.name_th ?? 'ว่าง'),
-  );
-  cell.addEventListener('click', () => openSlotPanel(el, ctx, b.slot));
-  return cell;
-}
-
 // Troops-at-home panel.
 function troopsPanel(ctx) {
   const rows = Object.entries(ctx.village.troops_home || {});
@@ -126,15 +105,11 @@ function movementsPanel(ctx) {
 export async function render(el, ctx) {
   clear(el);
   const v = ctx.village;
-  const grid = h('div', { class: 'field-grid' });
-  for (const b of v.buildings) {
-    if (b.slot >= 1 && b.slot <= 18) grid.append(fieldCell(el, ctx, b));
-  }
   el.append(
     heading(ctx),
     ratesRow(ctx),
     cultureRow(ctx),
-    h('div', { class: 'panel' }, grid),
+    sceneFrame(el, ctx, 'all'),
     queuePanel(ctx),
     troopsPanel(ctx),
     movementsPanel(ctx),
