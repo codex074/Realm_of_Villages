@@ -108,6 +108,49 @@ def resume() -> None:
 
 
 @app.command()
-def simulate() -> None:
-    """Run an accelerated simulation."""
-    _todo()
+def simulate(
+    days: float = typer.Option(5, "--days", help="Number of game days to simulate."),
+    speed: int = typer.Option(1, "--speed", help="World speed multiplier."),
+    seed: int = typer.Option(42, "--seed", help="World seed."),
+    bots: int = typer.Option(30, "--bots", help="Number of bot players."),
+    with_player_idle: bool = typer.Option(
+        False, "--with-player-idle", help="Accepted for compatibility; the player is always idle."
+    ),
+    report: str | None = typer.Option(None, "--report", help="CSV report path (optional)."),
+) -> None:
+    """Run an accelerated simulation.
+
+    Creates a NEW world in the configured database (ending any running one)
+    and advances it in virtual time; the human player stays idle.
+    """
+    from realm.core.config import load_config
+    from realm.sim.simulate import Snapshot, run_simulation
+
+    cfg = load_config()
+    keys = list(cfg.personalities)
+    header = ["day", *keys, "troops", "raids", "failed"]
+    widths = [6] + [max(8, len(k)) for k in keys] + [6, 6, 6]
+
+    def on_snapshot(snap: Snapshot) -> None:
+        """Print one fixed-width table row and commit so progress is saved."""
+        s.commit()
+        row = (
+            [f"{snap.day:.2f}"]
+            + [f"{snap.avg_population[k]:.1f}" for k in keys]
+            + [str(snap.troops), str(snap.raids), str(snap.failed_events)]
+        )
+        typer.echo("  ".join(cell.rjust(width) for cell, width in zip(row, widths, strict=True)))
+
+    with session_scope() as s:
+        typer.echo("  ".join(h.ljust(w) for h, w in zip(header, widths, strict=True)))
+        result = run_simulation(
+            s,
+            cfg,
+            days=days,
+            speed=speed,
+            seed=seed,
+            bots=bots,
+            report_path=report,
+            on_snapshot=on_snapshot,
+        )
+    typer.echo(f"raids={result.raids} failed_events={result.failed_events}")

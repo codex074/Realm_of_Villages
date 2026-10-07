@@ -435,3 +435,14 @@ def test_raid_closer_target_wins(s, cfg, t0: datetime) -> None:
     assert len(actions) == 1
     assert actions[0].params["to_x"] == other_village.x
     assert actions[0].params["to_y"] == other_village.y
+
+
+def test_training_falls_back_to_spearman_when_mix_is_untrainable(s, cfg, t0: datetime) -> None:
+    """A raider (mix: light_cavalry, swordsman) with only a barracks level 1 trains spearmen."""
+    _world, bot, profile, village, _other = _make_world(s, cfg, t0)
+    _add_building(s, village, 20, "barracks", 1)
+    ctx = _ctx(s, bot, profile, village, t0, cfg, personality="raider")
+    actions = training(ctx)
+    assert len(actions) == 1
+    assert actions[0].params["unit"] == "spearman"
+    assert actions[0].params["count"] >= 1

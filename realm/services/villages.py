@@ -63,7 +63,11 @@ def lock_village(s: Session, village_id: int) -> Village:
 
 def _building_rows(s: Session, village_id: int) -> list[Building]:
     """All building rows of a village."""
-    return list(s.scalars(select(Building).where(Building.village_id == village_id)).all())
+    return list(
+        s.scalars(
+            select(Building).where(Building.village_id == village_id).order_by(Building.slot)
+        ).all()
+    )
 
 
 def levels(s: Session, village_id: int) -> dict[str, int]:

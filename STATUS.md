@@ -32,14 +32,14 @@
 | T15c | merged | 1 | ผ่านรอบแรก ข้อความไทยถูกครบ; ทดสอบในเบราว์เซอร์จริง: ปล้นสำเร็จ (loot 500x4), รายงานสองฝ่าย, badge, แผงฝึกทหาร ทำงานถูก |
 | T16a | merged | 1 | Claude แก้บั๊กจริง: modules.raid อ่าน village.protection_until (ไม่มีคอลัมน์ ต้องเป็นของ Player) แต่ test ตั้ง attribute เองจึงผ่านทั้งที่ผิด |
 | T16b | merged | 1 | ผ่านรอบแรก ไม่ต้องแก้ (wrapper หยุด exit 4 เพราะ Qwen เพิ่ม tests/bot/__init__.py กันชื่อ test_worker ซ้ำ ชอบธรรม; 320 tests ผ่าน) |
-| T17 | todo | 0 | simulator |
+| T17 | merged | 1 | Qwen เขียน simulator แต่ session ค้างเกิน 30 นาที (test ช้า ~114s/รอบ); Claude แก้เอง: brain ข้ามโมดูลสร้างเมื่อคิวเต็ม + cap ความล้มเหลวต่อชนิด (เร็วขึ้น 3 เท่า), บั๊ก KeyError spearman ใน modules.training ที่ simulator เจอ (678 ครั้ง), เรียง query ตาม slot/id ให้ deterministic, test ปรับเป็น speed 1 (7s) |
 | T08 | merged | 1 | Claude แก้ healthcheck (ขาด "CMD"); build+up จริงผ่าน: migrate, เว็บ/API/WS ผ่าน Caddy :8080, engine ทำงาน, backup.sh ใช้ได้ |
 
 สถานะที่ใช้: todo · delegated · in-review · merged · blocked · claude-fallback
 
 ## ด่าน
 - [ ] G1
-- [ ] G2
+- [ ] G2  (เกณฑ์ T17 ผ่านแล้วอัตโนมัติ: 5 วัน/30 bot ใน 1:51, failed 0, ประชากรโตทุกบุคลิก, ปล้น 99 ครั้ง; ที่เหลือต้องทดสอบมือ)
 
 ## การตั้งค่าที่ต่างจาก CLAUDE.md
 - Qwen เรียกผ่าน `claude --settings ~/.claude-9arm.json ...` (skill qwen-agent) ไม่ใช่ `scripts/delegate.py` (OpenAI endpoint)
@@ -48,6 +48,7 @@
 ## บทเรียนจาก Qwen (ใส่ใน notes ของ task ถัดไป)
 - ต้องเรียก Qwen ด้วย env สะอาด (wrapper ทำให้แล้ว) ไม่งั้น "Not logged in"
 - JSONB server_default ต้องเป็น text("'{}'::jsonb") ไม่ใช่สตริง "{}::jsonb" (Qwen พลาดใน T03a)
+- การจำลองจริงเจอบั๊กที่ unit test ไม่เจอ (KeyError fallback, query ไม่มี ORDER BY ทำให้ผลไม่ deterministic): รัน `realm simulate` ทุกครั้งที่แก้ bot
 - ระวัง: test ของ Qwen อาจ "ตั้ง attribute ที่ไม่มีใน model" แล้วผ่านทั้งที่ของจริงพัง (เจอใน T16a) -> ใส่ใน notes ให้ test ตั้งค่าผ่านคอลัมน์จริงเท่านั้น และรีวิวว่าฟิลด์ที่โค้ดอ่านมีใน models.py จริง
 - ระวัง: Qwen พิมพ์คำไทยผิดเหมือนกันทั้งในโค้ดและ test ทำให้ test ผ่านทั้งที่ผิด -> เพิ่ม KNOWN_BAD ใน check_thai.py และอ่านสตริงไทยทุกครั้ง
 - Qwen ลืม "CMD" ใน healthcheck.test ของ compose; test_cmd ที่ใช้ python ต้องเรียกผ่าน `uv run` (python3 ระบบเป็น 3.9 ไม่มี yaml)

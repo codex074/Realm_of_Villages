@@ -47,7 +47,11 @@ def make_context(
     memory: dict,
 ) -> BotContext:
     """Build a BotContext from the DB for one bot village."""
-    rows = list(s.scalars(select(Building).where(Building.village_id == village.id)).all())
+    rows = list(
+        s.scalars(
+            select(Building).where(Building.village_id == village.id).order_by(Building.slot)
+        ).all()
+    )
     troops_home: Units = {}
     for t in s.scalars(
         select(Troop).where(
@@ -211,7 +215,8 @@ def training(ctx: BotContext) -> list[Action]:
             candidates = ["spearman"]
         else:
             return []
-    unit = ctx.rng.choices(candidates, weights=[ctx.personality.unit_mix[u] for u in candidates])[0]
+    weights = [ctx.personality.unit_mix.get(u, 1.0) for u in candidates]  # spearman fallback
+    unit = ctx.rng.choices(candidates, weights=weights)[0]
     cost = units_core.unit_cost(unit, bot.tribe, cfg)
     stock = Res(ctx.village.wood, ctx.village.stone, ctx.village.iron, ctx.village.food)
     ratios = [
@@ -248,6 +253,7 @@ def raid(ctx: BotContext) -> list[Action]:
         select(Village, Player)
         .join(Player, Player.id == Village.player_id)
         .where(Village.world_id == world.id)
+        .order_by(Village.id)
     ).all()
     for v, owner in candidates:
         if v.player_id == bot.id:
