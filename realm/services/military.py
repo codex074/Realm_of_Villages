@@ -1,17 +1,18 @@
-"""Military commands: send troops, preview, recall reinforcements, return arrival (BUILD.md 8.6)."""
+"""Military commands: send troops, preview, recall, arrival resolution (BUILD.md 8.6)."""
 
+import random
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from realm.core import movement
+from realm.core import combat, economy, movement
 from realm.core import units as units_core
 from realm.core.config import GameConfig
 from realm.core.types import EventType, Mission, Res, Units
-from realm.db.models import Movement, Player, Troop, Village, World
-from realm.services import events, notify, villages
+from realm.db.models import Building, Movement, Player, Troop, Village, World
+from realm.services import events, notify, reports, villages
 from realm.services.errors import (
     FORBIDDEN,
     INVALID_TARGET,
@@ -35,6 +36,13 @@ PROTECTED_TH = "เป้าหมายยังอยู่ในช่วง�
 NOT_ENOUGH_TROOPS_TH = "ทหารไม่พอ"
 TROOP_NOT_FOUND_TH = "ไม่พบทัพเสริม"
 NOT_A_REINFORCEMENT_TH = "ไม่ใช่ทัพเสริม"
+ATTACK_LABEL_TH = "โจมตี"
+RAID_LABEL_TH = "ปล้น"
+SCOUT_TITLE_TH = "สอดแนม"
+SCOUT_FAILED_TITLE_TH = "หน่วยสอดแนมถูกจับได้ทั้งหมด"
+SCOUT_DETECTED_PREFIX_TH = "ตรวจพบการสอดแนมจาก "
+REINFORCE_SENT_PREFIX_TH = "ส่งทัพเสริมไปยัง "
+REINFORCE_RECEIVED_PREFIX_TH = "ได้รับทัพเสริมจาก "
 
 
 @dataclass
@@ -297,8 +305,391 @@ def create_return_movement(
     return mv
 
 
+def _village_brief(village: Village, id_key: str) -> dict:
+    """A plain {<id_key>, name, x, y} dict for report payloads."""
+    return {id_key: village.id, "name": village.name, "x": village.x, "y": village.y}
+
+
+def _lock_and_settle(s: Session, village_ids: list[int], now: datetime, cfg: GameConfig) -> None:
+    """Lock the given villages in ascending id order and settle each one."""
+    for vid in sorted(village_ids):
+        villages.lock_village(s, vid)
+    for vid in sorted(village_ids):
+        villages.settle_village(s, s.get(Village, vid), now, cfg)
+
+
+def _defender_groups(s: Session, target: Village) -> list[combat.ArmyGroup]:
+    """Defender army groups at the target, grouped by home village."""
+    by_home: dict[int, Units] = {}
+    for t in s.scalars(
+        select(Troop).where(Troop.location_village_id == target.id).order_by(Troop.id)
+    ).all():
+        units = by_home.setdefault(t.home_village_id, {})
+        units[t.unit] = units.get(t.unit, 0) + t.count
+    groups: list[combat.ArmyGroup] = []
+    for home_id in sorted(by_home):
+        owner = s.get(Player, s.get(Village, home_id).player_id)
+        groups.append(
+            combat.ArmyGroup(tribe=owner.tribe, units=by_home[home_id], owner_ref=home_id)
+        )
+    return groups
+
+
+def _apply_defender_losses(
+    s: Session, target: Village, groups: list[combat.ArmyGroup], result
+) -> None:
+    """Subtract battle losses from the defender Troop rows; delete rows that hit 0."""
+    for group, losses in zip(groups, result.defender_losses, strict=True):
+        for unit, dead in losses.items():
+            if dead <= 0:
+                continue
+            for t in s.scalars(
+                select(Troop)
+                .where(
+                    Troop.home_village_id == group.owner_ref,
+                    Troop.location_village_id == target.id,
+                    Troop.unit == unit,
+                )
+                .order_by(Troop.id)
+            ).all():
+                if dead <= 0:
+                    break
+                taken = min(t.count, dead)
+                t.count -= taken
+                dead -= taken
+                if t.count == 0:
+                    s.delete(t)
+
+
+def _resolve_battle_arrival(
+    s: Session, m: Movement, world: World, now: datetime, cfg: GameConfig
+) -> None:
+    """Resolve an attack/raid arrival: battle, plunder, reports and the return trip."""
+    target = s.get(Village, m.to_village_id) if m.to_village_id is not None else None
+    if target is None:
+        create_return_movement(
+            s, m.from_village_id, m.to_x, m.to_y, m.player_id, m.units, {}, now, cfg
+        )
+        m.status = "done"
+        s.flush()
+        villages.after_change(s, s.get(Village, m.from_village_id), now, cfg)
+        s.flush()
+        return
+    _lock_and_settle(s, [m.from_village_id, target.id], now, cfg)
+    home = s.get(Village, m.from_village_id)
+    attacker_player = s.get(Player, m.player_id)
+    target_player = s.get(Player, target.player_id)
+    groups = _defender_groups(s, target)
+    attacker = combat.ArmyGroup(
+        tribe=attacker_player.tribe, units=dict(m.units), owner_ref=m.from_village_id
+    )
+    lv = villages.levels(s, target.id)
+    wall_level = lv.get("wall", 0)
+    catapult_target_level: int | None = None
+    catapult_building: Building | None = None
+    if m.mission == Mission.ATTACK.value and m.units.get("catapult", 0) > 0:
+        rng = random.Random(f"{world.seed}:{m.id}")
+        if m.catapult_target is not None and lv.get(m.catapult_target, 0) > 0:
+            catapult_building = s.scalars(
+                select(Building).where(
+                    Building.village_id == target.id, Building.type == m.catapult_target
+                )
+            ).first()
+        else:
+            center_types = sorted(
+                btype
+                for btype, level in lv.items()
+                if level > 0 and cfg.buildings[btype].kind == "center"
+            )
+            if center_types:
+                chosen = rng.choice(center_types)
+                catapult_building = s.scalars(
+                    select(Building).where(
+                        Building.village_id == target.id, Building.type == chosen
+                    )
+                ).first()
+        if catapult_building is not None:
+            catapult_target_level = max(
+                b.level
+                for b in s.scalars(
+                    select(Building).where(
+                        Building.village_id == target.id,
+                        Building.type == catapult_building.type,
+                    )
+                ).all()
+            )
+    result = combat.resolve_battle(
+        combat.BattleInput(
+            mission=Mission(m.mission),
+            attacker=attacker,
+            defenders=groups,
+            defender_tribe=target_player.tribe,
+            wall_level=wall_level,
+            catapult_target_level=catapult_target_level,
+        ),
+        cfg,
+        random.Random(f"{world.seed}:{m.id}"),
+    )
+    _apply_defender_losses(s, target, groups, result)
+    wall_after = result.wall_level_after
+    if wall_after != wall_level:
+        wall_row = s.scalars(
+            select(Building).where(Building.village_id == target.id, Building.type == "wall")
+        ).first()
+        if wall_row is not None:
+            wall_row.level = wall_after
+    catapult_before = catapult_target_level
+    catapult_after = result.catapult_target_level_after
+    if (
+        catapult_building is not None
+        and catapult_after is not None
+        and catapult_after != catapult_before
+    ):
+        for b in s.scalars(
+            select(Building).where(
+                Building.village_id == target.id, Building.type == catapult_building.type
+            )
+        ).all():
+            b.level = catapult_after
+        if catapult_after == 0 and cfg.buildings[catapult_building.type].kind == "center":
+            for b in s.scalars(
+                select(Building).where(
+                    Building.village_id == target.id, Building.type == catapult_building.type
+                )
+            ).all():
+                s.delete(b)
+    survivors: Units = {}
+    for u, n in m.units.items():
+        left = n - result.attacker_losses.get(u, 0)
+        if left > 0:
+            survivors[u] = left
+    loot = Res()
+    if result.attacker_won:
+        hidden = economy.hideout_capacity(lv.get("hideout", 0), target_player.tribe, cfg)
+        carry = units_core.carry_capacity(survivors, attacker_player.tribe, cfg)
+        loot = combat.plunder(
+            Res(target.wood, target.stone, target.iron, target.food), hidden, carry
+        )
+        target.wood -= loot.wood
+        target.stone -= loot.stone
+        target.iron -= loot.iron
+        target.food -= loot.food
+    if survivors:
+        create_return_movement(
+            s,
+            m.from_village_id,
+            target.x,
+            target.y,
+            m.player_id,
+            survivors,
+            loot.to_dict(),
+            now,
+            cfg,
+        )
+    label = ATTACK_LABEL_TH if m.mission == Mission.ATTACK.value else RAID_LABEL_TH
+    data = {
+        "mission": m.mission,
+        "attacker": {
+            "player": attacker_player.name,
+            "village": _village_brief(home, "id"),
+            "tribe": attacker_player.tribe,
+            "units": dict(m.units),
+            "losses": dict(result.attacker_losses),
+        },
+        "defenders": [
+            {
+                "player": s.get(Player, s.get(Village, g.owner_ref).player_id).name,
+                "village_id": g.owner_ref,
+                "tribe": g.tribe,
+                "units": dict(g.units),
+                "losses": dict(losses),
+            }
+            for g, losses in zip(groups, result.defender_losses, strict=True)
+        ],
+        "target": _village_brief(target, "village_id"),
+        "attacker_won": result.attacker_won,
+        "attack_power": result.attack_power,
+        "defense_power": result.defense_power,
+        "loot": loot.to_dict(),
+        "wall": {"before": wall_level, "after": wall_after},
+        "catapult": (
+            None
+            if catapult_building is None
+            else {
+                "building": catapult_building.type,
+                "before": catapult_before,
+                "after": catapult_after,
+            }
+        ),
+        "loyalty": None,
+    }
+    defender_title = f"ถูก{label}โดย {home.name}"
+    recipient_players: dict[int, str] = {m.player_id: f"{label} {target.name}"}
+    if target_player.id != m.player_id:
+        recipient_players[target_player.id] = defender_title
+    for g in groups:
+        owner = s.get(Player, s.get(Village, g.owner_ref).player_id)
+        if owner.id != m.player_id:
+            recipient_players.setdefault(owner.id, defender_title)
+    for player_id, title in recipient_players.items():
+        reports.create_report(s, player_id, "battle", title, data, now)
+    m.status = "done"
+    s.flush()
+    villages.after_change(s, home, now, cfg)
+    villages.after_change(s, target, now, cfg)
+    notify.notify(s, world.id, list(recipient_players), "village", target.id)
+    notify.notify(s, world.id, [m.player_id], "village", home.id)
+    s.flush()
+
+
+def _resolve_scout_arrival(
+    s: Session, m: Movement, world: World, now: datetime, cfg: GameConfig
+) -> None:
+    """Resolve a scout arrival: scouting report and the return trip of the survivors."""
+    target = s.get(Village, m.to_village_id) if m.to_village_id is not None else None
+    if target is None:
+        create_return_movement(
+            s, m.from_village_id, m.to_x, m.to_y, m.player_id, m.units, {}, now, cfg
+        )
+        m.status = "done"
+        s.flush()
+        villages.after_change(s, s.get(Village, m.from_village_id), now, cfg)
+        s.flush()
+        return
+    _lock_and_settle(s, [m.from_village_id, target.id], now, cfg)
+    home = s.get(Village, m.from_village_id)
+    target_player = s.get(Player, target.player_id)
+    attackers = sum(m.units.values())
+    defender_scouts = 0
+    for t in s.scalars(select(Troop).where(Troop.location_village_id == target.id)).all():
+        if t.unit == "scout":
+            defender_scouts += t.count
+    success, losses = combat.resolve_scout(attackers, defender_scouts, cfg)
+    survivors = attackers - losses
+    target_brief = _village_brief(target, "village_id")
+    if success:
+        troops: Units = {}
+        for t in s.scalars(select(Troop).where(Troop.location_village_id == target.id)).all():
+            troops[t.unit] = troops.get(t.unit, 0) + t.count
+        reports.create_report(
+            s,
+            m.player_id,
+            "scout",
+            f"{SCOUT_TITLE_TH} {target.name}",
+            {
+                "mission": "scout",
+                "success": True,
+                "target": target_brief,
+                "resources": Res(target.wood, target.stone, target.iron, target.food)
+                .floor()
+                .to_dict(),
+                "troops": dict(troops),
+                "wall": villages.levels(s, target.id).get("wall", 0),
+                "buildings": villages.levels(s, target.id),
+            },
+            now,
+        )
+    else:
+        reports.create_report(
+            s,
+            m.player_id,
+            "scout",
+            SCOUT_FAILED_TITLE_TH,
+            {"mission": "scout", "success": False, "target": target_brief},
+            now,
+        )
+        reports.create_report(
+            s,
+            target_player.id,
+            "scout",
+            f"{SCOUT_DETECTED_PREFIX_TH}{home.name}",
+            {"mission": "scout", "success": False, "target": target_brief},
+            now,
+        )
+    if survivors > 0:
+        create_return_movement(
+            s,
+            m.from_village_id,
+            target.x,
+            target.y,
+            m.player_id,
+            {"scout": survivors},
+            {},
+            now,
+            cfg,
+        )
+    m.status = "done"
+    s.flush()
+    villages.after_change(s, home, now, cfg)
+    villages.after_change(s, target, now, cfg)
+    notify.notify(s, world.id, [m.player_id, target_player.id], "village", target.id)
+    s.flush()
+
+
+def _resolve_reinforce_arrival(
+    s: Session, m: Movement, world: World, now: datetime, cfg: GameConfig
+) -> None:
+    """Resolve a reinforce arrival: upsert the Troop rows and notify both owners."""
+    target = s.get(Village, m.to_village_id) if m.to_village_id is not None else None
+    if target is None:
+        create_return_movement(
+            s, m.from_village_id, m.to_x, m.to_y, m.player_id, m.units, {}, now, cfg
+        )
+        m.status = "done"
+        s.flush()
+        villages.after_change(s, s.get(Village, m.from_village_id), now, cfg)
+        s.flush()
+        return
+    _lock_and_settle(s, [m.from_village_id, target.id], now, cfg)
+    home = s.get(Village, m.from_village_id)
+    for unit, count in m.units.items():
+        if count <= 0:
+            continue
+        row = s.scalars(
+            select(Troop).where(
+                Troop.home_village_id == m.from_village_id,
+                Troop.location_village_id == target.id,
+                Troop.unit == unit,
+            )
+        ).first()
+        if row is None:
+            s.add(
+                Troop(
+                    home_village_id=m.from_village_id,
+                    location_village_id=target.id,
+                    unit=unit,
+                    count=count,
+                )
+            )
+        else:
+            row.count += count
+    data = {
+        "from_village": _village_brief(home, "id"),
+        "target": _village_brief(target, "id"),
+        "units": dict(m.units),
+    }
+    reports.create_report(
+        s, m.player_id, "reinforce", f"{REINFORCE_SENT_PREFIX_TH}{target.name}", data, now
+    )
+    if target.player_id != m.player_id:
+        reports.create_report(
+            s,
+            target.player_id,
+            "reinforce",
+            f"{REINFORCE_RECEIVED_PREFIX_TH}{home.name}",
+            data,
+            now,
+        )
+    m.status = "done"
+    s.flush()
+    villages.after_change(s, home, now, cfg)
+    villages.after_change(s, target, now, cfg)
+    notify.notify(s, world.id, [m.player_id, target.player_id], "village", target.id)
+    s.flush()
+
+
 def resolve_arrival(s: Session, movement_id: int, now: datetime, cfg: GameConfig) -> None:
-    """Process a movement at its arrive_at; only 'return' is implemented so far."""
+    """Process a movement at its arrive_at: return, attack, raid, scout and reinforce."""
     m = s.get(Movement, movement_id)
     if m is None or m.status != "moving":
         return
@@ -339,4 +730,12 @@ def resolve_arrival(s: Session, movement_id: int, now: datetime, cfg: GameConfig
         notify.notify(s, village.world_id, [village.player_id], "village", village.id)
         s.flush()
         return
-    raise NotImplementedError("T13b")
+    world = s.get(World, m.world_id)
+    if m.mission in (Mission.ATTACK.value, Mission.RAID.value):
+        _resolve_battle_arrival(s, m, world, now, cfg)
+    elif m.mission == Mission.SCOUT.value:
+        _resolve_scout_arrival(s, m, world, now, cfg)
+    elif m.mission == Mission.REINFORCE.value:
+        _resolve_reinforce_arrival(s, m, world, now, cfg)
+    else:
+        raise GameError(INVALID_UNITS, SETTLE_NOT_READY_TH)

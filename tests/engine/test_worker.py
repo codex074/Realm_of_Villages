@@ -150,8 +150,8 @@ def test_other_world_and_future_events_not_processed(s, cfg: GameConfig, t0: dat
     assert statuses == {"other": "pending", "future": "pending"}
 
 
-def test_unimplemented_and_noop_handlers(s, cfg: GameConfig, t0: datetime) -> None:
-    """MOVEMENT_ARRIVE fails with a clear error; STARVATION_CHECK is a no-op that succeeds."""
+def test_noop_handlers(s, cfg: GameConfig, t0: datetime) -> None:
+    """MOVEMENT_ARRIVE for a missing movement and STARVATION_CHECK are no-ops that succeed."""
     world = _make_world(s, cfg, t0)
     move = events.schedule(s, world.id, EventType.MOVEMENT_ARRIVE, t0, {"movement_id": 1})
     starve = events.schedule(s, world.id, EventType.STARVATION_CHECK, t0, {"village_id": 1})
@@ -160,6 +160,5 @@ def test_unimplemented_and_noop_handlers(s, cfg: GameConfig, t0: datetime) -> No
     assert process_next(s, world, t0, cfg) is True
     s.refresh(move)
     s.refresh(starve)
-    assert move.status == "failed"
-    assert "not implemented" in (move.last_error or "")
+    assert move.status == "done"
     assert starve.status == "done"

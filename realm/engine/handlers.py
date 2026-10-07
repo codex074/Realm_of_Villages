@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from realm.core.config import GameConfig
 from realm.core.types import EventType
 from realm.db.models import Event
-from realm.services import training, villages
+from realm.services import military, training, villages
 
 logger = logging.getLogger("realm.engine")
 
@@ -26,8 +26,8 @@ def handle_train_tick(s: Session, ev: Event, cfg: GameConfig) -> None:
 
 
 def handle_movement_arrive(s: Session, ev: Event, cfg: GameConfig) -> None:
-    """Resolve an arriving troop movement (T13 not implemented yet)."""
-    raise NotImplementedError("T13 not implemented yet")
+    """Resolve an arriving troop movement at the event's due time."""
+    military.resolve_arrival(s, ev.payload["movement_id"], ev.due_at, cfg)
 
 
 def handle_starvation_check(s: Session, ev: Event, cfg: GameConfig) -> None:
