@@ -261,7 +261,12 @@ function house({ w = 60, d = 40, h = 30, rh = 22, wall = C.wall, roof = C.roof, 
     const bw = Math.min(w * 0.62, 40);
     const bu = w * 0.46;
     const bh = h * 0.86;
-    faceL.append(el('path', { d: `M${bu - bw / 2} -5V${-bh + 8}a${bw / 2} 8 0 0 1 ${bw} 0V-5z`, fill: barn === 'open' ? '#24180f' : shade('#8a5d33', 0.9), stroke: INK, 'stroke-width': 1.2 }));
+    faceL.append(el('path', { d: `M${bu - bw / 2} -5V${-bh + 8}a${bw / 2} 8 0 0 1 ${bw} 0V-5z`, fill: barn === 'open' || barn === 'gate' ? '#24180f' : shade('#8a5d33', 0.9), stroke: INK, 'stroke-width': 1.2 }));
+    if (barn === 'gate') {
+      for (let gx = bu - bw / 2 + 4; gx < bu + bw / 2 - 2; gx += 5) faceL.append(line(gx, -5, gx, -bh + 6, '#6b717a', 1.3));
+      for (const gy of [-14, -22, -30]) faceL.append(line(bu - bw / 2 + 1, gy, bu + bw / 2 - 1, gy, '#6b717a', 1.2));
+      faceL.append(el('path', { d: `M${bu - bw / 2 - 2} -5V${-bh + 8}a${bw / 2 + 2} 10 0 0 1 ${bw + 4} 0`, fill: 'none', stroke: C.stoneL, 'stroke-width': 3 }));
+    }
     if (barn === 'closed') {
       faceL.append(line(bu, -5, bu, -bh, INK, 1));
       for (const sgn of [-1, 1]) {
@@ -369,17 +374,18 @@ function hall(o) {
 }
 
 // A round tower with an optional conical roof, stone courses and arrow slits.
-function tower({ r = 18, h = 60, cone = 30, wall = C.wall, wallD = C.wallD, roof = C.roof, x = 0, y = 0 }) {
+function tower({ r = 18, h = 60, cone = 30, wall = C.wall, wallD = C.wallD, roof = C.roof, x = 0, y = 0, tex = 'plaster', roofTex = 'tile' }) {
   const g = el('g', { transform: `translate(${x} ${y})` });
   g.append(shadow(4, 3, r + 8, 7));
-  g.append(el('path', { d: `M${-r} ${-h}V0a${r} ${r * 0.34} 0 0 0 ${2 * r} 0V${-h}z`, fill: wall, stroke: INK, 'stroke-width': 1.4 }));
+  g.append(el('path', { d: `M${-r} ${-h}V0a${r} ${r * 0.34} 0 0 0 ${2 * r} 0V${-h}z`, fill: wallTexture(tex, wall), stroke: INK, 'stroke-width': 1.4 }));
   g.append(el('path', { d: `M${-r} ${-h}V0a${r} ${r * 0.34} 0 0 0 ${2 * r} 0V${-h}z`, fill: 'url(#sc-shade)', stroke: 'none' }));
+  g.append(el('path', { d: `M${r * 0.2} ${-h}V${r * 0.3}a${r * 0.8} ${r * 0.3} 0 0 0 ${r * 0.8} -${r * 0.34}V${-h}z`, fill: '#2a1a0c', opacity: 0.22 }));
   for (let cy = -h + 9; cy < -4; cy += 9) {
     g.append(el('path', { d: `M${-r} ${cy}a${r} ${r * 0.3} 0 0 0 ${2 * r} 0`, fill: 'none', stroke: wallD, 'stroke-width': 1, opacity: 0.8 }));
   }
   if (h > 44) g.append(rect(-1.8, -h * 0.55, 3.6, 10, C.dark, { 'stroke-width': 0.6 }));
   if (cone > 0) {
-    g.append(el('path', { d: `M${-r - 5} ${-h}L0 ${-h - cone}L${r + 5} ${-h}a${r + 5} ${(r + 5) * 0.3} 0 0 1 ${-(2 * r + 10)} 0z`, fill: roof, stroke: INK, 'stroke-width': 1.4, 'stroke-linejoin': 'round' }));
+    g.append(el('path', { d: `M${-r - 5} ${-h}L0 ${-h - cone}L${r + 5} ${-h}a${r + 5} ${(r + 5) * 0.3} 0 0 1 ${-(2 * r + 10)} 0z`, fill: roofTexture(roofTex, roof), stroke: INK, 'stroke-width': 1.4, 'stroke-linejoin': 'round' }));
     for (let k = 1; k <= 3; k++) {
       const yy = -h - cone * (k / 4);
       const half = (r + 5) * (1 - k / 4);
@@ -501,7 +507,7 @@ const SPRITES = {
   },
   granary() {
     const g = el('g');
-    g.append(tower({ r: 26, h: 52, cone: 34, wall: C.hay, wallD: C.hayD, roof: C.roof, x: -6 }));
+    g.append(tower({ r: 26, h: 52, cone: 34, wall: C.hay, wallD: C.hayD, roof: C.roof, x: -6, tex: 'plank' }));
     g.append(line(-32, -22, 20, -22, C.hayD, 1.4));
     g.append(line(-32, -38, 20, -38, C.hayD, 1.4));
     g.append(el('path', { d: 'M-14 0v-15a8 8 0 0 1 16 0v15z', fill: C.woodD, stroke: INK, 'stroke-width': 1.3 }));
@@ -620,77 +626,180 @@ const SPRITES = {
 
 // ---------- field sprites ----------
 
+// An isometric stone/crate block (no roof) with textured faces.
+function block(x, y, w = 14, d = 12, h = 10, color = '#c9c4b6', tex = 'stone') {
+  const Lx = -AX * w;
+  const Ly = -AY * w;
+  const Rx = AX * d;
+  const Ry = -AY * d;
+  const g = el('g', { transform: `translate(${x} ${y})` });
+  g.append(shadow(h * 0.4 + 4, 2, w * 0.9, 5));
+  g.append(poly([[0, 0], [Lx, Ly], [Lx, Ly - h], [0, -h]], wallTexture(tex, color)));
+  g.append(poly([[0, 0], [Rx, Ry], [Rx, Ry - h], [0, -h]], wallTexture(tex, shade(color, 0.78))));
+  g.append(poly([[0, 0], [Rx, Ry], [Rx, Ry - h], [0, -h]], '#2a1a0c', { opacity: 0.22, 'stroke-width': 0 }));
+  g.append(poly([[0, -h], [Lx, Ly - h], [Lx + Rx, Ly + Ry - h], [Rx, Ry - h]], shade(color, 1.14)));
+  return g;
+}
+
+// A pile of logs with barked sides and ringed ends.
+function logPile(x, y, rows = 3) {
+  const g = el('g', { transform: `translate(${x} ${y})` });
+  const bark = pattern('bark', 9, 9, () => [
+    rect(0, 0, 9, 9, '#8a5d33', { stroke: 'none' }),
+    line(0, 2, 9, 2, '#6b4526', 0.9),
+    line(0, 5.5, 9, 5.5, '#a67a4a', 0.9),
+    line(0, 8, 9, 8, '#6b4526', 0.7),
+  ]);
+  g.append(shadow(2, 4, 26, 6));
+  for (let r = 0; r < rows; r++) {
+    for (let i = 0; i < rows - r; i++) {
+      const lx = (i - (rows - r - 1) / 2) * 11;
+      const ly = -r * 8;
+      g.append(rect(lx - 13, ly - 4.5, 26, 9, bark, { rx: 4, 'stroke-width': 1 }));
+      g.append(ellipse(lx + 13, ly, 3.6, 4.6, '#dcb780', { 'stroke-width': 0.9 }));
+      g.append(ellipse(lx + 13, ly, 1.8, 2.4, 'none', { stroke: '#8a5d33', 'stroke-width': 0.7 }));
+    }
+  }
+  return g;
+}
+
+function hayBale(x, y, s = 1) {
+  const g = el('g', { transform: `translate(${x} ${y}) scale(${s})` });
+  g.append(shadow(3, 3, 14, 4));
+  g.append(rect(-12, -14, 24, 14, C.hay, { rx: 6 }));
+  g.append(rect(-12, -14, 24, 14, 'url(#sc-shade)', { rx: 6, stroke: 'none' }));
+  g.append(ellipse(12, -7, 4, 7, C.goldL, { 'stroke-width': 1 }));
+  g.append(ellipse(12, -7, 2, 4, 'none', { stroke: C.hayD, 'stroke-width': 0.8 }));
+  for (const bx of [-5, 3]) g.append(line(bx, -14, bx, 0, C.woodD, 1.3, { opacity: 0.85 }));
+  return g;
+}
+
 const FIELD_SPRITES = {
   woodcutter(level) {
     const g = el('g');
     const trees = 2 + Math.min(3, Math.floor(level / 3));
-    const spots = [[-48, -10], [-30, -26], [50, -14], [34, -30], [-6, -34]];
-    for (let i = 0; i < trees; i++) g.append(pine(spots[i][0], spots[i][1] + 22, 0.95));
-    g.append(hall({ w: 46, d: 30, h: 22, rh: 16, wall: C.woodL, wallD: C.wood, roof: '#6f4a2a', roofL: '#8e6339', roofD: '#4c311a', wins: 1, door: true, x: -8, y: 8, planks: true }));
-    g.append(log(36, 14));
-    g.append(log(40, 6));
-    g.append(log(32, 6));
+    const spots = [[-52, 6], [-34, -8], [54, -10], [38, -22], [-8, -24]];
+    for (let i = 0; i < trees; i++) g.append(pine(spots[i][0], spots[i][1] + 8, 0.95));
+    g.append(hall({ w: 46, d: 30, h: 22, rh: 16, wall: C.woodL, roof: '#6f4a2a', roofTex: 'thatch', wins: 1, door: true, x: -8, y: 10, planks: true }));
+    g.append(logPile(40, 18, Math.min(4, 2 + Math.floor(level / 4))));
+    // chopping stump with an axe
+    const stump = el('g', { transform: 'translate(-48 24)' });
+    stump.append(shadow(2, 3, 12, 4));
+    stump.append(rect(-8, -9, 16, 10, '#8a5d33', { rx: 2 }));
+    stump.append(ellipse(0, -9, 8, 3.2, '#dcb780', { 'stroke-width': 1 }));
+    stump.append(line(0, -10, 10, -22, C.woodD, 2.6));
+    stump.append(poly([[8, -26], [16, -22], [11, -17], [8, -21]], '#9aa3ad'));
+    g.append(stump);
     return g;
   },
   quarry(level) {
     const g = el('g');
-    g.append(el('path', { d: 'M-58 8C-62 -18 -34 -34 -6 -34S52 -24 58 8z', fill: C.stoneD, stroke: INK, 'stroke-width': 1.5 }));
-    g.append(el('path', { d: 'M-40 -10C-30 -26 -6 -30 14 -28', fill: 'none', stroke: C.stoneL, 'stroke-width': 4, opacity: 0.8 }));
-    g.append(el('path', { d: 'M-14 8v-12h28v12z', fill: '#3f352c', stroke: INK, 'stroke-width': 1.3 }));
-    g.append(rock(-44, 12, 0.9));
-    g.append(rock(46, 14, 0.8));
-    const blocks = 1 + Math.min(3, Math.floor(level / 3));
-    for (let i = 0; i < blocks; i++) g.append(crate(24 + i * 14, 14 - (i % 2) * 8, 0.8));
-    g.append(line(-26, 12, -26, -26, C.woodD, 3.5));
-    g.append(line(-26, -26, -6, -18, C.woodD, 3));
+    const stone = wallTexture('stone', '#aaa599');
+    g.append(shadow(0, 12, 72, 12));
+    // terraced rock face with a lit top and a shaded right side
+    g.append(poly([[-64, 12], [-60, -12], [-38, -30], [-8, -38], [26, -30], [54, -14], [64, 12]], stone));
+    g.append(poly([[-60, -12], [-38, -30], [-8, -38], [-16, -22], [-44, -8]], '#fff', { opacity: 0.2, 'stroke-width': 0 }));
+    g.append(poly([[-8, -38], [26, -30], [54, -14], [64, 12], [22, 12], [14, -14]], '#2a1a0c', { opacity: 0.26, 'stroke-width': 0 }));
+    for (const [a, b] of [[[-52, -2], [-22, -12]], [[-22, -12], [14, -12]], [[14, -12], [50, -2]], [[-34, -22], [0, -26]]]) g.append(line(a[0], a[1], b[0], b[1], '#5c574c', 1.6));
+    // the cut face
+    g.append(poly([[-24, 12], [-18, -8], [8, -10], [14, 12]], '#d8d2c0'));
+    g.append(poly([[8, -10], [14, 12], [28, 12], [20, -8]], '#8d877a'));
+    g.append(line(-12, -2, 8, -3, '#5c574c', 1));
+    // blocks waiting to be carried off
+    const n = 1 + Math.min(4, Math.floor(level / 2));
+    const spots = [[34, 22], [50, 18], [42, 11], [-44, 24], [-30, 20]];
+    for (let i = 0; i < n; i++) g.append(block(spots[i][0], spots[i][1], 13, 11, 9));
+    // wooden crane
+    g.append(line(-30, 14, -30, -30, C.woodD, 4));
+    g.append(line(-30, -30, -6, -22, C.woodD, 3.4));
+    g.append(line(-6, -22, -6, -8, '#6b5a40', 1.2));
+    g.append(block(-6, -4, 9, 8, 7, '#c9c4b6'));
     return g;
   },
   iron_mine(level) {
     const g = el('g');
-    g.append(el('path', { d: 'M-62 10L-34 -30L-14 -14L12 -50L40 -20L64 10z', fill: '#6b6f78', stroke: INK, 'stroke-width': 1.5, 'stroke-linejoin': 'round' }));
-    g.append(poly([[12, -50], [40, -20], [22, -14]], '#4f535c', { opacity: 0.9, 'stroke-width': 0 }));
-    g.append(poly([[-34, -30], [-14, -14], [-30, -8]], '#8a8f99', { opacity: 0.9, 'stroke-width': 0 }));
-    g.append(el('path', { d: 'M-18 10v-22a18 18 0 0 1 36 0v22z', fill: '#241a12', stroke: INK, 'stroke-width': 1.5 }));
-    g.append(line(-20, 10, -20, -14, C.woodD, 4));
-    g.append(line(20, 10, 20, -14, C.woodD, 4));
-    g.append(line(-22, -14, 22, -14, C.woodD, 4));
-    const cart = el('g', { transform: 'translate(40 14)' });
-    cart.append(poly([[-12, -12], [12, -12], [9, 0], [-9, 0]], C.woodD));
-    cart.append(el('circle', { cx: -5, cy: -14, r: 4, fill: C.iron, stroke: INK, 'stroke-width': 1 }));
-    cart.append(el('circle', { cx: 4, cy: -15, r: 4.5, fill: C.ironD, stroke: INK, 'stroke-width': 1 }));
-    cart.append(el('circle', { cx: -6, cy: 2, r: 3.4, fill: C.stoneL, stroke: INK, 'stroke-width': 1 }));
-    cart.append(el('circle', { cx: 6, cy: 2, r: 3.4, fill: C.stoneL, stroke: INK, 'stroke-width': 1 }));
+    const rockTex = wallTexture('stone', '#7b7f89');
+    g.append(shadow(0, 12, 74, 12));
+    g.append(poly([[-66, 12], [-38, -32], [-16, -14], [12, -54], [42, -22], [66, 12]], rockTex));
+    g.append(poly([[-38, -32], [-16, -14], [-34, -6]], '#fff', { opacity: 0.18, 'stroke-width': 0 }));
+    g.append(poly([[12, -54], [42, -22], [66, 12], [24, 12], [18, -20]], '#14110d', { opacity: 0.34, 'stroke-width': 0 }));
+    g.append(poly([[12, -54], [26, -38], [4, -34]], '#cfd8e0', { opacity: 0.6, 'stroke-width': 0 }));
+    // timber-framed entrance
+    g.append(el('path', { d: 'M-20 12v-24a20 20 0 0 1 40 0v24z', fill: '#17110b', stroke: INK, 'stroke-width': 1.5 }));
+    g.append(rect(-26, -36, 52, 6, C.woodD, { 'stroke-width': 0.9 }));
+    g.append(rect(-26, -36, 6, 50, C.wood, { 'stroke-width': 0.9 }));
+    g.append(rect(20, -36, 6, 50, C.wood, { 'stroke-width': 0.9 }));
+    g.append(line(-26, -12, -14, -30, C.woodD, 3));
+    g.append(line(26, -12, 14, -30, C.woodD, 3));
+    g.append(el('circle', { cx: 0, cy: -26, r: 2.6, fill: '#ffd27a', stroke: INK, 'stroke-width': 0.8 }));
+    g.append(el('circle', { cx: 0, cy: -26, r: 8, fill: '#ffd27a', opacity: 0.25 }));
+    // rails coming out of the mine
+    for (const sx of [-8, 8]) g.append(line(sx * 0.7, 12, sx * 1.9, 34, '#5a5f66', 2.2));
+    for (let k = 0; k < 4; k++) {
+      const yy = 16 + k * 5.5;
+      g.append(line(-12 - k * 1.4, yy, 12 + k * 1.4, yy, C.woodD, 2));
+    }
+    // ore cart + ore piles
+    const cart = el('g', { transform: 'translate(34 26)' });
+    cart.append(shadow(2, 3, 18, 5));
+    cart.append(poly([[-14, -14], [14, -14], [10, 0], [-10, 0]], '#6b4a2a'));
+    cart.append(poly([[-14, -14], [14, -14], [14, -11], [-14, -11]], '#8a6238', { 'stroke-width': 0.8 }));
+    for (const [ox, oy, orr] of [[-7, -17, 5], [1, -19, 6], [8, -16, 4.5]]) cart.append(poly([[ox - orr, oy + 3], [ox - orr * 0.6, oy - orr], [ox + orr * 0.5, oy - orr * 0.9], [ox + orr, oy + 2]], '#8aa0bd'));
+    cart.append(el('circle', { cx: -7, cy: 1, r: 3.6, fill: '#4a4f57', stroke: INK, 'stroke-width': 1 }));
+    cart.append(el('circle', { cx: 7, cy: 1, r: 3.6, fill: '#4a4f57', stroke: INK, 'stroke-width': 1 }));
     g.append(cart);
-    for (let i = 0; i < Math.min(3, Math.floor(level / 3) + 1); i++) g.append(rock(-48 + i * 10, 14 - i * 4, 0.6, C.iron, '#a9c0da'));
+    for (let i = 0; i < Math.min(3, Math.floor(level / 3) + 1); i++) g.append(rock(-52 + i * 11, 22 - i * 3, 0.55, '#8aa0bd', '#c5d4e6'));
     return g;
   },
   farm(level) {
     const g = el('g');
-    g.append(el('path', { d: 'M-66 6C-72 -16 -40 -34 0 -30S70 -20 68 6C60 22 -50 22 -66 6z', fill: C.hay, stroke: INK, 'stroke-width': 1.5 }));
-    for (let i = 0; i < 6; i++) {
-      const y = -22 + i * 7;
-      g.append(el('path', { d: `M${-58 + i * 2} ${y}q56 ${i % 2 ? -8 : 8} ${114 - i * 4} 0`, fill: 'none', stroke: C.hayD, 'stroke-width': 1.6, opacity: 0.85 }));
-    }
-    for (let i = 0; i < 6; i++) {
-      const y = -22 + i * 7;
-      for (let k = 0; k < 15; k++) {
-        const x = -54 + i * 2 + k * 7.4 + (i % 2) * 3;
-        const yy = y + (i % 2 ? -1 : 1) * Math.sin(k * 0.8) * 2.2 - 2;
-        g.append(line(x, yy + 4, x + 0.8, yy - 1.5, k % 3 ? '#f6d974' : '#b8892a', 1.5, { opacity: 0.95 }));
+    const T = [0, -26];
+    const R = [66, 0];
+    const B = [0, 28];
+    const Lv = [-66, 0];
+    const lerpP = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+    // tilled field: soil border, golden crop, furrows
+    g.append(shadow(0, 8, 76, 14));
+    g.append(poly([T, R, B, Lv], '#8a6538', { 'stroke-width': 1.4 }));
+    const shrink = (p) => [p[0] * 0.88, p[1] * 0.86 + 0.5];
+    const ip = [T, R, B, Lv].map(shrink);
+    g.append(poly(ip, '#e2bb4e', { 'stroke-width': 0.8 }));
+    for (let k = 1; k < 9; k++) {
+      const a = lerpP(ip[3], ip[2], k / 9);
+      const b = lerpP(ip[0], ip[1], k / 9);
+      g.append(line(a[0], a[1], b[0], b[1], '#a8802c', 1.3, { opacity: 0.9 }));
+      for (let s = 0.08; s < 0.95; s += 0.085) {
+        const p = lerpP(a, b, s);
+        g.append(line(p[0], p[1], p[0] + 0.8, p[1] - 4.5, s * 100 % 3 < 1 ? '#fff0a0' : '#c9962c', 1.5));
       }
     }
-    if (level >= 3) g.append(hall({ w: 34, d: 24, h: 18, rh: 14, wall: '#d9a07a', wallD: '#b07a55', wins: 0, door: true, x: -38, y: 2, planks: true }));
+    g.append(poly(ip, 'url(#sc-shade)', { stroke: 'none', opacity: 0.6 }));
+    // wooden fence along the front edges
+    for (const [a, b] of [[Lv, B], [B, R]]) {
+      for (let k = 0; k <= 6; k++) {
+        const p = lerpP(a, b, k / 6);
+        g.append(line(p[0], p[1], p[0], p[1] - 7, C.woodD, 2));
+      }
+      g.append(line(a[0], a[1] - 5, b[0], b[1] - 5, C.wood, 1.6));
+    }
+    if (level >= 3) g.append(hall({ w: 34, d: 24, h: 18, rh: 14, wall: '#d9a07a', wins: 0, door: true, x: -44, y: -10, planks: true }));
     if (level >= 6) {
-      const mill = el('g', { transform: 'translate(44 6)' });
-      mill.append(tower({ r: 11, h: 36, cone: 16, wall: C.wallL }));
-      mill.append(el('g', { class: 'sc-sails' }, line(-22, -48, 22, -26, C.woodD, 3), line(22, -48, -22, -26, C.woodD, 3)));
+      const mill = el('g', { transform: 'translate(48 -2)' });
+      mill.append(tower({ r: 11, h: 36, cone: 16, wall: C.wallL, tex: 'plaster' }));
+      const sails = el('g', { class: 'sc-sails', transform: 'translate(0 -37)' });
+      for (const ang of [0, 90, 180, 270]) {
+        sails.append(el('g', { transform: `rotate(${ang + 20})` }, line(0, 0, 0, -26, C.woodD, 2.4), poly([[1, -8], [8, -10], [8, -25], [1, -25]], '#f2e8cc', { 'stroke-width': 0.8 })));
+      }
+      mill.append(sails);
       g.append(mill);
     } else {
-      g.append(ellipse(46, 4, 12, 8, C.hay));
-      g.append(ellipse(46, -2, 9, 6, C.goldL, { 'stroke-width': 1 }));
+      g.append(hayBale(50, 20, 0.9));
+      if (level >= 2) g.append(hayBale(64, 24, 0.8));
     }
-    g.append(line(0, 2, 0, -14, C.woodD, 2.5));
-    g.append(line(-8, -8, 8, -8, C.woodD, 2.5));
+    // scarecrow
+    g.append(line(0, 4, 0, -16, C.woodD, 2.5));
+    g.append(line(-8, -10, 8, -10, C.woodD, 2.5));
+    g.append(el('circle', { cx: 0, cy: -19, r: 3.4, fill: C.hay, stroke: INK, 'stroke-width': 0.9 }));
     return g;
   },
 };
@@ -869,15 +978,11 @@ function gatePos(a) {
 
 function gateSprite(level) {
   const g = el('g');
-  const h = 54 + Math.min(20, level);
-  g.append(shadow(0, 4, 44, 9));
-  g.append(rect(-32, -h, 20, h, C.wall));
-  g.append(rect(12, -h, 20, h, C.wall));
-  g.append(poly([[12, 0], [32, 0], [32, -h], [12, -h]], C.wallD, { opacity: 0.35, 'stroke-width': 0 }));
-  g.append(rect(-34, -h - 10, 24, 10, C.roof));
-  g.append(rect(10, -h - 10, 24, 10, C.roof));
-  g.append(el('path', { d: `M-14 0V${-h * 0.55}a14 ${h * 0.4} 0 0 1 28 0V0z`, fill: '#2f2217', stroke: INK, 'stroke-width': 1.4 }));
-  g.append(rect(-14, -h - 6, 28, 8, C.wallD));
+  const hh = 38 + Math.min(14, level);
+  const stone = '#ddd5bf';
+  g.append(tower({ r: 11, h: hh + 16, cone: 20, wall: stone, tex: 'stone', roof: '#a8483a', x: -36, y: -4 }));
+  g.append(house({ w: 36, d: 28, h: hh, rh: 13, wall: stone, tex: 'stone', roof: '#a8483a', door: false, wins: 0, barn: 'gate', x: 0, y: 4 }));
+  g.append(tower({ r: 11, h: hh + 16, cone: 20, wall: stone, tex: 'stone', roof: '#a8483a', x: 36, y: -8 }));
   return g;
 }
 
@@ -925,20 +1030,24 @@ function drawWall(level, onClick, title) {
   }
   // back half: inner wall face
   back.append(el('title', {}, title));
-  back.append(el('path', { d: `${arc(CY, 1)}L${CX + TOWN_RX} ${CY - H}A${TOWN_RX} ${TOWN_RY} 0 0 0 ${CX - TOWN_RX} ${CY - H}z`, fill: C.wallD, stroke: INK, 'stroke-width': 1.4, 'stroke-linejoin': 'round' }));
-  back.append(el('path', { d: arc(CY - H, 1), fill: 'none', stroke: '#8a4636', 'stroke-width': 13 }));
-  back.append(el('path', { d: arc(CY - H, 1), fill: 'none', stroke: '#c8694c', 'stroke-width': 7 }));
+  back.append(el('path', { d: `${arc(CY, 1)}L${CX + TOWN_RX} ${CY - H}A${TOWN_RX} ${TOWN_RY} 0 0 0 ${CX - TOWN_RX} ${CY - H}z`, fill: wallTexture('stone', '#cdbd9a'), stroke: INK, 'stroke-width': 1.4, 'stroke-linejoin': 'round' }));
+  back.append(el('path', { d: arc(CY, 1), fill: 'none', stroke: '#1d1408', 'stroke-width': 10, opacity: 0.18 }));
+  back.append(el('path', { d: arc(CY - H, 1), fill: 'none', stroke: INK, 'stroke-width': 16 }));
+  back.append(el('path', { d: arc(CY - H, 1), fill: 'none', stroke: roofTexture('tile', '#b5543a'), 'stroke-width': 14 }));
+  back.append(el('path', { d: arc(CY - H, 1), fill: 'none', stroke: 'url(#sc-roofshade2)', 'stroke-width': 14, opacity: 0.5 }));
   // front half: outer wall face
   front.append(el('title', {}, title));
-  front.append(el('path', { d: `${arc(CY, 0)}L${CX + TOWN_RX} ${CY - H}A${TOWN_RX} ${TOWN_RY} 0 0 1 ${CX - TOWN_RX} ${CY - H}z`, fill: C.wall, stroke: INK, 'stroke-width': 1.4, 'stroke-linejoin': 'round' }));
+  front.append(el('path', { d: `${arc(CY, 0)}L${CX + TOWN_RX} ${CY - H}A${TOWN_RX} ${TOWN_RY} 0 0 1 ${CX - TOWN_RX} ${CY - H}z`, fill: wallTexture('stone', '#ece2c6'), stroke: INK, 'stroke-width': 1.4, 'stroke-linejoin': 'round' }));
   for (let i = 1; i < 36; i++) {
     const a = Math.PI * (i / 36);
     const x = CX - TOWN_RX * Math.cos(a);
     const y = CY + TOWN_RY * Math.sin(a);
-    front.append(line(x, y, x, y - H, C.wallD, 1, { opacity: 0.6 }));
+    front.append(line(x, y, x, y - H, C.wallD, 1, { opacity: 0.25 }));
   }
-  front.append(el('path', { d: arc(CY - H, 0), fill: 'none', stroke: '#8a4636', 'stroke-width': 13 }));
-  front.append(el('path', { d: arc(CY - H, 0), fill: 'none', stroke: '#c8694c', 'stroke-width': 7 }));
+  front.append(el('path', { d: arc(CY, 0), fill: 'none', stroke: '#1d1408', 'stroke-width': 8, opacity: 0.16 }));
+  front.append(el('path', { d: arc(CY - H, 0), fill: 'none', stroke: INK, 'stroke-width': 16 }));
+  front.append(el('path', { d: arc(CY - H, 0), fill: 'none', stroke: roofTexture('tile', '#b5543a'), 'stroke-width': 14 }));
+  front.append(el('path', { d: arc(CY - H, 0), fill: 'none', stroke: 'url(#sc-roofshade2)', 'stroke-width': 14, opacity: 0.5 }));
   front.addEventListener('click', onClick);
   back.addEventListener('click', onClick);
   return { back, front, H };
