@@ -68,7 +68,7 @@ export function queuePanel(ctx) {
     { class: 'panel' },
     h('h2', { class: 'panel-heading' }, 'คิวก่อสร้าง'),
     ...body,
-    h('div', { class: 'muted' }, `ช่องก่อสร้าง: ${v.build_queue.length}/${v.queue_limit}`),
+    h('div', { class: 'muted' }, `ช่างก่อสร้าง: ${v.build_queue.length}/${v.queue_limit}`),
   );
 }
 
