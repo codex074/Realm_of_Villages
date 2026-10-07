@@ -250,6 +250,16 @@ def my_invites(s: Session, player_id: int) -> list[dict]:
     return out
 
 
+def alliance_names(s: Session, world_id: int) -> dict[int, str]:
+    """Map player_id to alliance name for every member of every alliance in the world."""
+    rows = s.execute(
+        select(AllianceMember.player_id, Alliance.name)
+        .join(Alliance, Alliance.id == AllianceMember.alliance_id)
+        .where(Alliance.world_id == world_id)
+    ).all()
+    return {player_id: name for player_id, name in rows}
+
+
 def are_allies(s: Session, a_id: int, b_id: int) -> bool:
     """Whether two distinct players belong to the same alliance."""
     if a_id == b_id:

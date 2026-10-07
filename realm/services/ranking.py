@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from realm.core.config import GameConfig
 from realm.db.models import Building, Player, Village
+from realm.services import alliances
 from realm.services.views import RankingRow
 
 
@@ -24,6 +25,7 @@ def get_ranking(s: Session, world_id: int, cfg: GameConfig) -> list[RankingRow]:
         population[player_id] += cfg.buildings[btype].pop_per_level * level
         if btype == "monument":
             monument[player_id] = max(monument[player_id], level)
+    names = alliances.alliance_names(s, world_id)
     ordered = sorted(
         players,
         key=lambda p: (-monument[p.id], -population[p.id], -len(village_ids[p.id]), p.id),
@@ -38,6 +40,7 @@ def get_ranking(s: Session, world_id: int, cfg: GameConfig) -> list[RankingRow]:
             villages=len(village_ids[p.id]),
             population=population[p.id],
             monument=monument[p.id],
+            alliance=names.get(p.id),
         )
         for i, p in enumerate(ordered)
     ]

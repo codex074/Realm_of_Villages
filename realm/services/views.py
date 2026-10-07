@@ -194,6 +194,7 @@ class RankingRow(BaseModel):
     villages: int
     population: int
     monument: int = 0
+    alliance: str | None = None
 
 
 class StateView(BaseModel):

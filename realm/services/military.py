@@ -12,7 +12,17 @@ from realm.core import units as units_core
 from realm.core.config import GameConfig
 from realm.core.types import EventType, Mission, Res, TileKind, Units
 from realm.db.models import Building, Movement, Player, Tile, Troop, Village, World
-from realm.services import conquest, events, market, notify, oasis, reports, smithy, villages
+from realm.services import (
+    alliances,
+    conquest,
+    events,
+    market,
+    notify,
+    oasis,
+    reports,
+    smithy,
+    villages,
+)
 from realm.services.errors import (
     FORBIDDEN,
     INVALID_TARGET,
@@ -35,6 +45,7 @@ SETTLE_SUCCESS_TH = "ตั้งหมู่บ้านใหม่สำเ�
 SETTLE_FAILED_TH = "ตั้งหมู่บ้านใหม่ไม่สำเร็จ"
 UNKNOWN_BUILDING_TH = "ไม่พบอาคารนี้"
 SELF_TARGET_TH = "เป้าหมายคือหมู่บ้านตัวเอง"
+ALLY_TARGET_TH = "โจมตีพันธมิตรไม่ได้"
 NO_TARGET_VILLAGE_TH = "ไม่มีหมู่บ้านที่เป้าหมาย"
 PROTECTED_TH = "เป้าหมายยังอยู่ในช่วงคุ้มครอง"
 NOT_ENOUGH_TROOPS_TH = "ทหารไม่พอ"
@@ -155,6 +166,8 @@ def _check_send(
                 problems.append((INVALID_TARGET, NO_TARGET_VILLAGE_TH))
         elif target.player_id == player_id:
             problems.append((INVALID_TARGET, SELF_TARGET_TH))
+        elif alliances.are_allies(s, player_id, target.player_id):
+            problems.append((INVALID_TARGET, ALLY_TARGET_TH))
         else:
             target_player = s.get(Player, target.player_id)
             if target_player.protection_until > now:

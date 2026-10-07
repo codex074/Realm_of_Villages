@@ -15,7 +15,7 @@ from realm.core.names import BOT_NAMES
 from realm.core.slots import initial_buildings
 from realm.core.types import EventType, TileKind
 from realm.db.models import BotProfile, Building, Player, Tile, Village, World
-from realm.services import events, notify, ranking, reports
+from realm.services import alliances, events, notify, ranking, reports
 from realm.services.errors import INVALID_TARGET, NOT_FOUND, PAUSE_DISABLED, GameError
 from realm.services.views import Coord, MapTile, MapView
 
@@ -489,6 +489,8 @@ def get_map(
             populations[village_id] = (
                 populations.get(village_id, 0) + cfg.buildings[btype].pop_per_level * level
             )
+    names = alliances.alliance_names(s, world_id)
+    viewer_alliance = names.get(player_id)
     villages_by_pos = {(v.x, v.y): v for v in villages}
     tiles_by_pos = {(row.x, row.y): row for row in tiles}
     out_tiles: list[MapTile] = []
@@ -507,6 +509,12 @@ def get_map(
                 "population": populations.get(village.id, 0),
                 "is_mine": village.player_id == player_id,
                 "is_bot": owner.is_bot,
+                "alliance": names.get(village.player_id),
+                "is_ally": (
+                    village.player_id != player_id
+                    and viewer_alliance is not None
+                    and names.get(village.player_id) == viewer_alliance
+                ),
             }
         oasis_dict: dict | None = None
         if tile is not None and tile.kind in (TileKind.OASIS.value, TileKind.RUIN.value):
