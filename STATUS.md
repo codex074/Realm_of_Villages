@@ -48,6 +48,8 @@
 | T31a | merged | 1 | alliances service; logic ถูก Claude แก้ไทยเพี้ยน 5 ข้อความ |
 | T31b | merged | 1 | alliance API; Claude จำกัด limit แชท 1..200 + แก้ไทยใน test 2 จุด |
 | T32a | merged | 0 | Claude ทำเอง: WS กรองตามบัญชีในโหมด auth (TTL cache 5 วิ กัน stale เมื่อมีคนเข้าโลกใหม่) |
+| T33 | merged | 1 | rate limit (60/10 วิ ต่อบัญชี/IP), กันคำสั่งซ้ำ 1 วิ, audit_log; Claude แก้ไทยเพี้ยน 2 ข้อความ, อ่าน X-Forwarded-For (หลัง Caddy), เพิ่ม fixture รีเซ็ต guard ใน conftest (สถานะระดับโมดูลทำให้ test ข้ามกันชนกัน) |
+| T34 | merged | 0 | Claude ทำเอง: เว็บ login/สมัคร, เข้าร่วมโลก, หน้าพันธมิตร+แชท (poll 5 วิ), account box; ทดสอบในเบราว์เซอร์จริงโหมด auth แล้ว |
 
 สถานะที่ใช้: todo · delegated · in-review · merged · blocked · claude-fallback
 
@@ -57,8 +59,16 @@
 - T24: เกณฑ์ sim 20 วัน@1x ยังไม่ผ่าน (รอผล speed 3 แล้วเสนอปรับ balance ให้ผู้ใช้ตัดสิน)
 
 ## ด่าน
+- [ ] G3 (Phase 3 multiplayer: ดูหัวข้อด้านล่าง)
 - [ ] G1
 - [ ] G2  (เกณฑ์ T17 ผ่านแล้วอัตโนมัติ: 5 วัน/30 bot ใน 1:51, failed 0, ประชากรโตทุกบุคลิก, ปล้น 99 ครั้ง; ที่เหลือต้องทดสอบมือ)
+
+## G3 — เช็กลิสต์ทดสอบมือ Phase 3 (multiplayer)
+1. `REALM_AUTH_REQUIRED=true` แล้วเปิดเว็บ → ไปหน้า login; สมัครบัญชีแรก (เป็น admin) → สร้างโลก
+2. เปิดอีกเบราว์เซอร์/โหมดส่วนตัว สมัครบัญชีที่สอง → เข้าร่วมโลก (เกิดที่ขอบรัศมี)
+3. admin ตั้งพันธมิตรแล้วเชิญคนที่สอง → ตอบรับ → แชทเห็นกันภายใน ~5 วินาที
+4. ปุ่มหยุดเกมหายสำหรับคนที่ไม่ใช่ admin; admin กดแล้วได้ error เมื่อมีมนุษย์ >1
+5. ไม่ใช้ REALM_AUTH_REQUIRED (ค่าเริ่มต้น) → เล่นคนเดียวเหมือนเดิม ไม่ต้อง login
 
 ## การตั้งค่าที่ต่างจาก CLAUDE.md
 - Qwen เรียกผ่าน `claude --settings ~/.claude-9arm.json ...` (skill qwen-agent) ไม่ใช่ `scripts/delegate.py` (OpenAI endpoint)
