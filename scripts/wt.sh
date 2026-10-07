@@ -14,7 +14,7 @@ WT_DIR="$(dirname "$ROOT")/rov-worktrees"
 DB_CONTAINER="${REALM_TEST_DB_CONTAINER:-realofvillages-db_test-1}"
 cmd="${1:-}"
 name="${2:?usage: wt.sh <new|run|test|merge|rm> <name> ...}"
-db_name="realm_test_${name//[^a-zA-Z0-9]/_}"
+db_name="realm_test_$(printf %s "${name//[^a-zA-Z0-9]/_}" | tr A-Z a-z)"  # postgres folds unquoted names to lower case
 db_url="postgresql+psycopg://realm_test:realm_test@localhost:5433/${db_name}"
 
 psql_admin() { docker exec "$DB_CONTAINER" psql -U realm_test -d postgres -v ON_ERROR_STOP=1 -q -c "$1"; }

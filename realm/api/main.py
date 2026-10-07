@@ -9,13 +9,24 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from realm.api import ws
-from realm.api.routes import admin, market, military, reports, smithy, state, villages, world
-from realm.services.errors import FORBIDDEN, NOT_FOUND, WORLD_ENDED, GameError
+from realm.api.routes import admin, auth, market, military, reports, smithy, state, villages, world
+from realm.services.errors import (
+    FORBIDDEN,
+    NO_PLAYER,
+    NOT_FOUND,
+    RATE_LIMITED,
+    UNAUTHENTICATED,
+    WORLD_ENDED,
+    GameError,
+)
 
 _STATUS_BY_CODE = {
     NOT_FOUND: 404,
     FORBIDDEN: 403,
     WORLD_ENDED: 409,
+    UNAUTHENTICATED: 401,
+    NO_PLAYER: 404,
+    RATE_LIMITED: 429,
 }
 
 
@@ -45,6 +56,7 @@ def create_app(serve_static: bool = True) -> FastAPI:
         return JSONResponse(status_code=status, content=body)
 
     app.include_router(ws.router)
+    app.include_router(auth.router, prefix="/api")
     app.include_router(state.router, prefix="/api")
     app.include_router(villages.router, prefix="/api")
     app.include_router(military.router, prefix="/api")

@@ -1,0 +1,24 @@
+{
+  "id": "T31b",
+  "title": "phase 3: alliance API routes",
+  "spec": [
+    "1692-1700"
+  ],
+  "read": [
+    "realm/services/alliances.py",
+    "realm/api/deps.py",
+    "realm/api/main.py",
+    "realm/api/schemas.py",
+    "realm/api/routes/market.py",
+    "tests/api/test_api_phase0.py"
+  ],
+  "write": [
+    "realm/api/routes/alliances.py",
+    "realm/api/schemas.py",
+    "realm/api/main.py",
+    "tests/api/test_api_alliances.py"
+  ],
+  "test_cmd": "uv run pytest tests/api/test_api_alliances.py tests/api/test_api_phase0.py -q",
+  "criteria": "Expose realm/services/alliances.py over HTTP. EDITING RULE: main.py and schemas.py already exist with proofread Thai: use small targeted Edit operations only (include the new router in main.py with prefix '/api'; add the body models to schemas.py). New logic goes into the NEW file realm/api/routes/alliances.py. All routes use deps.get_player (the requesting human player; works in both auth and non-auth mode), deps.get_session, and for mutating routes deps.require_running; the current time = datetime.now(timezone.utc) inside the route (API layer is allowed to). The service commits via the session dependency.\nRoutes (prefix /api/alliance):\nGET /alliance -> alliances.my_alliance(...) (JSON object or null).\nPOST /alliance body {name} -> create_alliance; returns my_alliance.\nGET /alliance/invites -> my_invites.\nPOST /alliance/invite body {player_name} -> looks the target player up by name (case-insensitive) in the player's world; not found -> GameError NOT_FOUND 'ไม่พบผู้เล่น'; calls invite(); returns {'ok': True}.\nPOST /alliance/invites/{alliance_id}/accept -> accept_invite; returns my_alliance. POST /alliance/invites/{alliance_id}/decline -> decline_invite; {'ok': True}.\nPOST /alliance/leave -> leave; {'ok': True}.\nPOST /alliance/kick body {player_id} -> kick; {'ok': True}.\nGET /alliance/messages?after=0&limit=50 -> list_messages. POST /alliance/messages body {text} -> post_message; returns the message dict as in list_messages.\nBody models in schemas.py: AllianceCreateBody{name: str}, AllianceInviteBody{player_name: str}, AllianceKickBody{player_id: int}, AllianceMessageBody{text: str}. GameError codes are already mapped to HTTP statuses by main.py (NOT_FOUND 404, FORBIDDEN 403, INVALID_TARGET 400): do not change the map.\nTests tests/api/test_api_alliances.py: TestClient(create_app(serve_static=False)) with dependency_overrides[get_session] yielding the rollback `s` fixture (copy the exact fixture pattern from tests/api/test_api_phase0.py, including how the world is created); the default non-auth mode serves the single human. For other human players create extra Player rows directly (real columns: world_id, name, tribe, is_bot False, production_mult 1.0, culture_points 0, cp_updated_at, protection_until, created_at) and set up their state through the service functions (alliances.create_alliance / invite / accept_invite), then exercise the routes as the single human player. Cover: GET /alliance null at first; POST /alliance ok -> object with the human as leader member; second create -> 400; GET returns the object; invite a player by name -> 200 and my_alliance shows the pending invite; invite an unknown name -> 404; invite a bot's name -> 400; messages: POST then GET returns it, after= filter works, empty text -> 400; leave -> ok then GET /alliance null; invites: an alliance owned by another extra player who invites the human (service call): GET /alliance/invites lists it, accept -> my_alliance returned and invites empty; decline path on another invite; kick: leader human kicks an extra member -> 200, kicking a non-member -> 404; as non-leader (human accepted into another's alliance) POST /alliance/kick -> 403.",
+  "notes": "- Thai strings: use ONLY 'ไม่พบผู้เล่น' (exact, copy letter by letter). Do not retype any other Thai in existing files.\n- Real columns only in tests. Never commit; never call datetime.now() in services; run only the test_cmd files."
+}

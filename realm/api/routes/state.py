@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from realm.api.deps import get_cfg, get_session, get_world
+from realm.api.deps import get_cfg, get_player, get_session, get_world
 from realm.core.config import GameConfig
 from realm.core.slots import CENTER_SLOTS, FIELD_SLOTS
 from realm.db.models import Player, Report, Village, World
@@ -16,12 +16,15 @@ from realm.services.views import StateView
 router = APIRouter()
 
 
-def build_state(s: Session, world: World, cfg: GameConfig) -> StateView:
-    """Build the StateView of a world for its human player."""
+def build_state(
+    s: Session, world: World, cfg: GameConfig, player: Player | None = None
+) -> StateView:
+    """Build the StateView of a world for the given player (or its human player)."""
     now = worlds.world_now(world, datetime.now(UTC))
-    player = s.scalars(
-        select(Player).where(Player.world_id == world.id, Player.is_bot.is_(False))
-    ).first()
+    if player is None:
+        player = s.scalars(
+            select(Player).where(Player.world_id == world.id, Player.is_bot.is_(False))
+        ).first()
     player_dict: dict = {}
     if player is not None:
         player_dict = {"id": player.id, "name": player.name, "tribe": player.tribe}
@@ -56,9 +59,10 @@ def state(
     s: Session = Depends(get_session),  # noqa: B008
     cfg: GameConfig = Depends(get_cfg),  # noqa: B008
     world: World = Depends(get_world),  # noqa: B008
+    player: Player = Depends(get_player),  # noqa: B008
 ) -> StateView:
-    """Return the top-level game state of the newest world."""
-    return build_state(s, world, cfg)
+    """Return the top-level game state of the newest world for the current player."""
+    return build_state(s, world, cfg, player)
 
 
 @router.get("/meta")

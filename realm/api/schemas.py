@@ -3,6 +3,13 @@
 from pydantic import BaseModel
 
 
+class AuthBody(BaseModel):
+    """Body of POST /api/auth/register and /api/auth/login."""
+
+    username: str
+    password: str
+
+
 class BuildBody(BaseModel):
     """Body of POST /api/villages/{id}/build."""
 
