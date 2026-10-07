@@ -10,7 +10,8 @@ from realm.core.types import RESOURCE_KEYS, Res
 def building_cost(btype: str, target_level: int, cfg: GameConfig) -> Res:
     """Cost to build to target_level, floored to whole numbers per resource."""
     base = cfg.buildings[btype].base_cost
-    factor = cfg.construction.cost_growth ** (target_level - 1)
+    growth = cfg.buildings[btype].cost_growth or cfg.construction.cost_growth
+    factor = growth ** (target_level - 1)
     return Res(*(float(math.floor(getattr(base, k) * factor)) for k in RESOURCE_KEYS))
 
 
@@ -20,7 +21,7 @@ def build_time_s(
     """Seconds to build to target_level, shortened by town hall and world speed."""
     base = cfg.buildings[btype].base_time_s
     c = cfg.construction
-    t = base * c.time_growth ** (target_level - 1)
+    t = base * (cfg.buildings[btype].time_growth or c.time_growth) ** (target_level - 1)
     t /= 1 + c.town_hall_time_factor * (max(1, town_hall_level) - 1)
     return max(1.0, t / speed)
 

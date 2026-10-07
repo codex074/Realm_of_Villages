@@ -485,6 +485,80 @@ def defend(ctx: BotContext) -> list[Action]:
     return actions
 
 
+def monument(ctx: BotContext) -> list[Action]:
+    """Build the monument when the village owns a ruin and the palace is ready."""
+    if not villages.owns_ruin(ctx.s, ctx.village.id):
+        return []
+    if ctx.levels.get("palace", 0) < 10:
+        return []
+    if construction.missing_requirements("monument", ctx.levels, ctx.cfg):
+        return []
+    if ctx.levels.get("monument", 0) >= ctx.cfg.ruins.monument_win_level:
+        return []
+    slot = _existing_slot(ctx.rows, "monument")
+    if slot is None:
+        slot = _first_empty_center_slot(ctx.rows)
+    if slot is None:
+        return []
+    return [
+        Action(
+            kind="build", score=5.5, params={"slot": slot, "btype": "monument"}, module="monument"
+        )
+    ]
+
+
+def ruins_race(ctx: BotContext) -> list[Action]:
+    """Attack the nearest ruin the home army can beat (endgame ruin race)."""
+    cfg, bot, village, world = ctx.cfg, ctx.bot, ctx.village, ctx.world
+    if ctx.levels.get("rally_point", 0) < 1:
+        return []
+    army = {
+        u: n
+        for u, n in ctx.troops_home.items()
+        if n > 0 and cfg.units[u].type != "scout" and u not in ("settler", "chief")
+    }
+    if not army:
+        return []
+    attack = sum(cfg.units[u].attack * n for u, n in army.items())
+    tiles = list(
+        ctx.s.scalars(select(Tile).where(Tile.world_id == world.id, Tile.kind == "ruin")).all()
+    )
+    if not tiles:
+        return []
+    best: tuple[float, int, int, float] | None = None
+    for tile in tiles:
+        owner = tile.oasis_owner_village_id
+        if owner is not None:
+            owner_v = ctx.s.get(Village, owner)
+            if owner_v is not None and owner_v.player_id == bot.id:
+                continue  # already ours
+        if owner is None:
+            animals = tile.animals or {}
+            defence = cfg.combat.base_village_defense + sum(
+                count * max(cfg.ruins.guardians[key].def_inf, cfg.ruins.guardians[key].def_cav)
+                for key, count in animals.items()
+                if key in cfg.ruins.guardians
+            )
+        else:
+            defence = float(cfg.combat.base_village_defense)
+        if attack < 1.3 * defence:
+            continue
+        dist = movement.distance(village.x, village.y, tile.x, tile.y, world.size)
+        key = (round(dist, 6), tile.x, tile.y, defence)
+        if best is None or key < best:
+            best = key
+    if best is None:
+        return []
+    return [
+        Action(
+            kind="attack",
+            score=3.8,
+            params={"to_x": best[1], "to_y": best[2], "units": army},
+            module="ruins_race",
+        )
+    ]
+
+
 def _find_settle_tile(ctx: BotContext) -> tuple[int, int] | None:
     """Nearest empty valley tile within expand_radius that is far enough from every village."""
     cfg, world, village = ctx.cfg, ctx.world, ctx.village

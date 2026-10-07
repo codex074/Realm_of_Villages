@@ -78,6 +78,7 @@ class EventType(StrEnum):
     STARVATION_CHECK = "starvation_check"
     ROUND_END = "round_end"
     OASIS_RESPAWN = "oasis_respawn"
+    RUINS_APPEAR = "ruins_appear"
 
 
 class TileKind(StrEnum):
@@ -85,6 +86,7 @@ class TileKind(StrEnum):
     OASIS = "oasis"
     MOUNTAIN = "mountain"
     LAKE = "lake"
+    RUIN = "ruin"
 
 
 Units = dict[str, int]  # unit_key -> count (zero counts are not stored)

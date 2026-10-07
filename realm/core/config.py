@@ -105,6 +105,24 @@ class MarketSection(_Model):
     npc_fee: float
 
 
+class GuardianDef(_Model):
+    name_th: str
+    def_inf: float
+    def_cav: float
+    count: int
+
+
+class RuinsSection(_Model):
+    appear_day: float
+    count: int
+    min_center_distance: int
+    max_center_distance: int
+    min_gap: int
+    min_village_gap: int
+    monument_win_level: int
+    guardians: dict[str, GuardianDef]
+
+
 class BuildingDef(_Model):
     key: str
     name_th: str
@@ -118,6 +136,8 @@ class BuildingDef(_Model):
     pop_per_level: int
     cp_per_level: int
     requires: dict[str, int] = {}
+    cost_growth: float | None = None
+    time_growth: float | None = None
 
 
 class UnitDef(_Model):
@@ -183,6 +203,7 @@ class GameConfig(_Model):
     upgrades: UpgradesSection
     oasis: OasisSection
     market: MarketSection
+    ruins: RuinsSection
     buildings: dict[str, BuildingDef]
     units: dict[str, UnitDef]
     tribes: dict[str, TribeDef]

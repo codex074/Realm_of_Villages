@@ -306,6 +306,17 @@ market:                            # marketplace trade (T25)
   merchant_speed: 16               # tiles per hour at 1x for resource shipments
   capacity_per_level: 500          # total resources per shipment = market level x this
   npc_fee: 0.10                    # fee when exchanging resources with the NPC market (1:1 minus fee)
+
+ruins:                             # endgame: ancient ruins and the monument race (T26)
+  appear_day: 41                   # game days at 1x (divided by world speed) before the ruins appear
+  count: 5
+  min_center_distance: 12          # ruins lie in this ring around (0, 0)
+  max_center_distance: 40
+  min_gap: 15                      # minimum distance between two ruins
+  min_village_gap: 4               # minimum distance from any village
+  monument_win_level: 50           # first village to reach this monument level wins the world
+  guardians:                       # NPC defenders of a ruin (they never attack)
+    stone_guard: {name_th: ผู้พิทักษ์ศิลา, def_inf: 150, def_cav: 150, count: 40}
 ```
 
 ### 5.2 `buildings.yaml`
@@ -469,6 +480,22 @@ palace:
   pop_per_level: 4
   cp_per_level: 5
   requires: {town_hall: 5}
+```
+
+อาคารเพิ่มใน T26 (ใส่ต่อท้าย buildings.yaml): `monument` — `cost_growth`/`time_growth` เป็นฟิลด์เสริมต่ออาคารที่ override ค่า `construction.*`
+
+```yaml
+monument:
+  name_th: อนุสาวรีย์
+  kind: center
+  max_level: 50
+  base_cost: {wood: 500, stone: 500, iron: 500, food: 300}
+  base_time_s: 3600
+  cost_growth: 1.10               # per-building override of construction.cost_growth
+  time_growth: 1.05               # per-building override of construction.time_growth
+  pop_per_level: 5
+  cp_per_level: 10
+  requires: {palace: 10}          # also needs a ruin owned by the village (T26)
 ```
 
 กติกา: อาคาร `center` มีได้อย่างละ 1 หลังต่อหมู่บ้าน
@@ -693,7 +720,7 @@ personalities:
   warlord:
     name_th: ขุนศึก
     share: 0.10
-    weights: {economy: 0.8, build: 1.0, storage: 1.0, military: 1.5, raid: 1.2, expand: 0.5, conquer: 1.5}
+    weights: {economy: 0.8, build: 1.0, storage: 1.0, military: 1.5, raid: 1.2, expand: 0.5, conquer: 1.5, ruins_race: 1.5}
     army_hours: 12
     unit_mix: {swordsman: 0.4, heavy_cavalry: 0.4, ram: 0.1, catapult: 0.1}
     raid_radius: 20
@@ -1028,6 +1055,7 @@ def cancel_pending(s, world_id: int, etype: EventType, match: dict) -> int   # �
 | STARVATION_CHECK | `{"village_id": int}` | `villages.after_change` |
 | ROUND_END | `{}` | `worlds.create_world` |
 | OASIS_RESPAWN | `{}` | `worlds.create_world`, handler เอง (T23) |
+| RUINS_APPEAR | `{}` | `worlds.create_world` (T26) |
 
 ### 8.3 `services/notify.py`
 

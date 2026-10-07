@@ -194,6 +194,25 @@ def after_change(s: Session, village: Village, now: datetime, cfg: GameConfig) -
         )
 
 
+def owns_ruin(s: Session, village_id: int) -> bool:
+    """True when a ruin tile is owned by the given village."""
+    return (
+        s.scalar(
+            select(Tile.world_id).where(
+                Tile.kind == "ruin", Tile.oasis_owner_village_id == village_id
+            )
+        )
+        is not None
+    )
+
+
+def ruin_missing(s: Session, village: Village, btype: str) -> list[str]:
+    """The Thai requirement messages a monument build needs beyond the normal ones."""
+    if btype == "monument" and not owns_ruin(s, village.id):
+        return ["ต้องยึดซากโบราณก่อน"]
+    return []
+
+
 def build(
     s: Session,
     player_id: int,
@@ -227,6 +246,9 @@ def build(
     missing = construction.missing_requirements(btype, lv, cfg)
     if missing:
         raise GameError(REQUIREMENTS_NOT_MET, ", ".join(missing))
+    ruin_missing_msgs = ruin_missing(s, village, btype)
+    if ruin_missing_msgs:
+        raise GameError(REQUIREMENTS_NOT_MET, ", ".join(ruin_missing_msgs))
     queue = list(s.scalars(select(BuildQueue).where(BuildQueue.village_id == village.id)).all())
     if len(queue) >= construction.queue_limit(lv.get("town_hall", 0), cfg):
         raise GameError(QUEUE_FULL, QUEUE_FULL_TH)
@@ -282,6 +304,12 @@ def complete_build(s: Session, build_queue_id: int, now: datetime, cfg: GameConf
         row.level = bq.target_level
     s.delete(bq)
     s.flush()
+    if bq.type == "monument" and bq.target_level >= cfg.ruins.monument_win_level:
+        from realm.services import worlds  # lazy import to avoid an import cycle
+
+        worlds.end_round(
+            s, village.world_id, now, cfg, winner_player_id=village.player_id, reason="monument"
+        )
     after_change(s, village, now, cfg)
     notify.notify(s, village.world_id, [village.player_id], "village", village.id)
     s.flush()
@@ -487,6 +515,7 @@ def get_slot_view(
         target = row.level + 1
         cost = construction.building_cost(row.type, target, cfg)
         missing = construction.missing_requirements(row.type, lv, cfg)
+        missing += ruin_missing(s, village, row.type)
         upgrade = CostView(
             cost=cost.to_dict(),
             time_s=construction.build_time_s(
@@ -508,6 +537,7 @@ def get_slot_view(
                 continue
             cost = construction.building_cost(btype, 1, cfg)
             missing = construction.missing_requirements(btype, lv, cfg)
+            missing += ruin_missing(s, village, btype)
             options.append(
                 {
                     "type": btype,

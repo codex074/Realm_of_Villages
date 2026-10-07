@@ -72,7 +72,7 @@ def test_create_world_full_state(s, cfg, t0: datetime) -> None:
     assert by_slot[40].level == 0
 
     events = s.scalars(select(Event).where(Event.world_id == world.id)).all()
-    assert len(events) == 2  # ROUND_END + OASIS_RESPAWN (T23a)
+    assert len(events) == 3  # ROUND_END + OASIS_RESPAWN (T23a) + RUINS_APPEAR (T26)
     assert events[0].type == EventType.ROUND_END.value
     assert events[0].payload == {}
     assert events[0].due_at == world.ends_at

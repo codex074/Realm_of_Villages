@@ -53,5 +53,6 @@ def test_enums():
         "starvation_check",
         "round_end",
         "oasis_respawn",
+        "ruins_appear",
     }
     assert TileKind.OASIS.value == "oasis"

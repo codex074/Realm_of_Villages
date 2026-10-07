@@ -144,7 +144,7 @@ def _check_send(
             if (
                 mission in (Mission.ATTACK, Mission.RAID)
                 and tile is not None
-                and tile.kind == TileKind.OASIS.value
+                and tile.kind in (TileKind.OASIS.value, TileKind.RUIN.value)
             ):
                 problem = oasis.oasis_send_problem(
                     s, player_id, village, world, tx, ty, mission, cfg

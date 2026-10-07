@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from realm.core.config import GameConfig
 from realm.core.types import EventType
 from realm.db.models import Event
-from realm.services import military, training, villages, worlds
+from realm.services import military, ruins, training, villages, worlds
 
 Handler = Callable[[Session, Event, GameConfig], None]
 
@@ -46,6 +46,11 @@ def handle_oasis_respawn(s: Session, ev: Event, cfg: GameConfig) -> None:
     worlds.respawn_oases(s, ev.world_id, ev.due_at, cfg)
 
 
+def handle_ruins_appear(s: Session, ev: Event, cfg: GameConfig) -> None:
+    """Spawn the world's ancient ruins at the event's due time (idempotent)."""
+    ruins.spawn_ruins(s, ev.world_id, ev.due_at, cfg)
+
+
 HANDLERS: dict[EventType, Handler] = {
     EventType.BUILD_COMPLETE: handle_build_complete,
     EventType.TRAIN_TICK: handle_train_tick,
@@ -53,4 +58,5 @@ HANDLERS: dict[EventType, Handler] = {
     EventType.STARVATION_CHECK: handle_starvation_check,
     EventType.ROUND_END: handle_round_end,
     EventType.OASIS_RESPAWN: handle_oasis_respawn,
+    EventType.RUINS_APPEAR: handle_ruins_appear,
 }

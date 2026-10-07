@@ -12,7 +12,7 @@ REAL = Path(__file__).resolve().parents[2] / "realm" / "config"
 def test_real_config_loads():
     cfg = load_config()
     assert isinstance(cfg, GameConfig)
-    assert len(cfg.buildings) == 16
+    assert len(cfg.buildings) == 17
     assert len(cfg.units) == 9
     assert len(cfg.tribes) == 3
     assert len(cfg.personalities) == 5
@@ -48,7 +48,7 @@ def bad(tmp_path):
 
 
 def test_unmodified_copy_is_valid(bad):
-    assert len(load_config(bad("game.yaml", lambda d: None)).buildings) == 16
+    assert len(load_config(bad("game.yaml", lambda d: None)).buildings) == 17
 
 
 def test_building_requires_unknown(bad):

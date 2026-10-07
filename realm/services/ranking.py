@@ -13,6 +13,7 @@ def get_ranking(s: Session, world_id: int, cfg: GameConfig) -> list[RankingRow]:
     players = list(s.scalars(select(Player).where(Player.world_id == world_id)).all())
     village_ids: dict[int, set[int]] = {p.id: set() for p in players}
     population: dict[int, int] = {p.id: 0 for p in players}
+    monument: dict[int, int] = {p.id: 0 for p in players}
     stmt = (
         select(Village.player_id, Village.id, Building.type, Building.level)
         .join(Building, Building.village_id == Village.id)
@@ -21,7 +22,12 @@ def get_ranking(s: Session, world_id: int, cfg: GameConfig) -> list[RankingRow]:
     for player_id, village_id, btype, level in s.execute(stmt).all():
         village_ids[player_id].add(village_id)
         population[player_id] += cfg.buildings[btype].pop_per_level * level
-    ordered = sorted(players, key=lambda p: (-population[p.id], -len(village_ids[p.id]), p.id))
+        if btype == "monument":
+            monument[player_id] = max(monument[player_id], level)
+    ordered = sorted(
+        players,
+        key=lambda p: (-monument[p.id], -population[p.id], -len(village_ids[p.id]), p.id),
+    )
     return [
         RankingRow(
             rank=i + 1,
@@ -31,6 +37,7 @@ def get_ranking(s: Session, world_id: int, cfg: GameConfig) -> list[RankingRow]:
             is_bot=p.is_bot,
             villages=len(village_ids[p.id]),
             population=population[p.id],
+            monument=monument[p.id],
         )
         for i, p in enumerate(ordered)
     ]

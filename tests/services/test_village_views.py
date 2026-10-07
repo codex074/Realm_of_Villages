@@ -316,6 +316,7 @@ def test_slot_view_empty_center_options(s, cfg: GameConfig, t0) -> None:
         "hideout",
         "marketplace",
         "palace",
+        "monument",
     }
     assert "town_hall" not in by_type
     assert "woodcutter" not in by_type

@@ -22,6 +22,13 @@ OASIS_CAPTURED_TITLE_TH = "ยึดโอเอซิสสำเร็จ"
 OASIS_STOLEN_TITLE_TH = "โอเอซิสของคุณถูกยึด"
 WILD_ANIMALS_TH = "สัตว์ป่า"
 OASIS_NAME_TH = "โอเอซิส"
+RUIN_OWNED_BY_SELF_TH = "ซากโบราณเป็นของคุณแล้ว"
+RUIN_ATTACK_TITLE_TH = "โจมตีซากโบราณ"
+RUIN_RAID_TITLE_TH = "ปล้นซากโบราณ"
+RUIN_CAPTURED_TITLE_TH = "ยึดซากโบราณสำเร็จ"
+RUIN_STOLEN_TITLE_TH = "ซากโบราณของคุณถูกยึด"
+GUARDIANS_TH = "ผู้พิทักษ์"
+RUIN_NAME_TH = "ซากโบราณ"
 
 
 def is_oasis_tile(s: Session, world: World, tx: int, ty: int) -> bool:
@@ -48,15 +55,23 @@ def oasis_send_problem(
     mission: Mission,
     cfg: GameConfig,
 ) -> tuple[str, str] | None:
-    """The (code, message) problem of an attack/raid at an oasis; None when the target is valid."""
-    if movement.distance(village.x, village.y, tx, ty, world.size) > cfg.oasis.radius:
-        return (INVALID_TARGET, OASIS_TOO_FAR_TH)
+    """The (code, message) problem of an attack/raid at an oasis or ruin; None when valid."""
     tile = s.get(Tile, (world.id, tx, ty))
+    is_ruin = tile.kind == TileKind.RUIN.value
+    if not is_ruin:
+        if movement.distance(village.x, village.y, tx, ty, world.size) > cfg.oasis.radius:
+            return (INVALID_TARGET, OASIS_TOO_FAR_TH)
     if tile.oasis_owner_village_id is not None:
         owner = s.get(Village, tile.oasis_owner_village_id)
         if owner is not None and owner.player_id == player_id:
+            if is_ruin:
+                return (INVALID_TARGET, RUIN_OWNED_BY_SELF_TH)
             return (INVALID_TARGET, OASIS_OWNED_BY_SELF_TH)
-    if mission is Mission.ATTACK and owned_oases(s, village.id) >= cfg.oasis.max_per_village:
+    if (
+        not is_ruin
+        and mission is Mission.ATTACK
+        and owned_oases(s, village.id) >= cfg.oasis.max_per_village
+    ):
         return (INVALID_TARGET, OASIS_CAPACITY_FULL_TH)
     return None
 
@@ -69,10 +84,11 @@ def _village_brief(village: Village, id_key: str) -> dict:
 def resolve_oasis_arrival(
     s: Session, m: Movement, world: World, now: datetime, cfg: GameConfig
 ) -> bool:
-    """Resolve an attack/raid arrival at an oasis; False when the tile is not an oasis."""
+    """Resolve an attack/raid arrival at an oasis or ruin; False when it is neither."""
     tile = s.get(Tile, (world.id, m.to_x, m.to_y))
-    if tile is None or tile.kind != TileKind.OASIS.value:
+    if tile is None or tile.kind not in (TileKind.OASIS.value, TileKind.RUIN.value):
         return False
+    is_ruin = tile.kind == TileKind.RUIN.value
 
     from realm.services import military  # lazy import to avoid a cycle at module load
 
@@ -92,9 +108,16 @@ def resolve_oasis_arrival(
     animals_before = {a: n for a, n in (tile.animals or {}).items() if n > 0}
     defenders: list[combat.ArmyGroup] = []
     if tile.oasis_owner_village_id is None and animals_before:
-        stats = {
-            a: (cfg.oasis.animals[a].def_inf, cfg.oasis.animals[a].def_cav) for a in animals_before
-        }
+        if is_ruin:
+            stats = {
+                a: (cfg.ruins.guardians[a].def_inf, cfg.ruins.guardians[a].def_cav)
+                for a in animals_before
+            }
+        else:
+            stats = {
+                a: (cfg.oasis.animals[a].def_inf, cfg.oasis.animals[a].def_cav)
+                for a in animals_before
+            }
         defenders.append(
             combat.ArmyGroup(
                 tribe=attacker_player.tribe,
@@ -134,7 +157,7 @@ def resolve_oasis_arrival(
     if (
         m.mission == Mission.ATTACK.value
         and result.attacker_won
-        and owned_oases(s, m.from_village_id) < cfg.oasis.max_per_village
+        and (is_ruin or owned_oases(s, m.from_village_id) < cfg.oasis.max_per_village)
     ):
         captured = True
         tile.oasis_owner_village_id = home.id
@@ -146,12 +169,14 @@ def resolve_oasis_arrival(
 
     if captured and prev_owner_village is not None:
         villages.after_change(s, prev_owner_village, now, cfg)
+        stolen_data = {"village_id": prev_owner_village.id}
+        stolen_data["ruin" if is_ruin else "oasis"] = {"x": tile.x, "y": tile.y}
         reports.create_report(
             s,
             prev_owner_village.player_id,
             "info",
-            OASIS_STOLEN_TITLE_TH,
-            {"village_id": prev_owner_village.id, "oasis": {"x": tile.x, "y": tile.y}},
+            RUIN_STOLEN_TITLE_TH if is_ruin else OASIS_STOLEN_TITLE_TH,
+            stolen_data,
             now,
         )
 
@@ -166,11 +191,11 @@ def resolve_oasis_arrival(
         )
 
     if captured:
-        title = OASIS_CAPTURED_TITLE_TH
+        title = RUIN_CAPTURED_TITLE_TH if is_ruin else OASIS_CAPTURED_TITLE_TH
     elif m.mission == Mission.ATTACK.value:
-        title = OASIS_ATTACK_TITLE_TH
+        title = RUIN_ATTACK_TITLE_TH if is_ruin else OASIS_ATTACK_TITLE_TH
     else:
-        title = OASIS_RAID_TITLE_TH
+        title = RUIN_RAID_TITLE_TH if is_ruin else OASIS_RAID_TITLE_TH
     data = {
         "mission": m.mission,
         "attacker": {
@@ -183,7 +208,7 @@ def resolve_oasis_arrival(
         "defenders": (
             [
                 {
-                    "player": WILD_ANIMALS_TH,
+                    "player": GUARDIANS_TH if is_ruin else WILD_ANIMALS_TH,
                     "village_id": None,
                     "tribe": None,
                     "units": dict(animals_before),
@@ -193,7 +218,12 @@ def resolve_oasis_arrival(
             if defenders
             else []
         ),
-        "target": {"village_id": None, "name": OASIS_NAME_TH, "x": tile.x, "y": tile.y},
+        "target": {
+            "village_id": None,
+            "name": RUIN_NAME_TH if is_ruin else OASIS_NAME_TH,
+            "x": tile.x,
+            "y": tile.y,
+        },
         "attacker_won": result.attacker_won,
         "attack_power": result.attack_power,
         "defense_power": result.defense_power,
@@ -201,7 +231,8 @@ def resolve_oasis_arrival(
         "wall": {"before": 0, "after": 0},
         "catapult": None,
         "loyalty": None,
-        "oasis": {"type": tile.oasis_type, "captured": captured},
+        **({"ruin": {"captured": captured}} if is_ruin else {}),
+        **({"oasis": {"type": tile.oasis_type, "captured": captured}} if not is_ruin else {}),
     }
     reports.create_report(s, m.player_id, "battle", title, data, now)
     m.status = "done"

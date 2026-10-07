@@ -153,3 +153,14 @@ palace:
   pop_per_level: 4
   cp_per_level: 5
   requires: {town_hall: 5}
+monument:
+  name_th: อนุสาวรีย์
+  kind: center
+  max_level: 50
+  base_cost: {wood: 500, stone: 500, iron: 500, food: 300}
+  base_time_s: 3600
+  cost_growth: 1.10               # per-building override of construction.cost_growth
+  time_growth: 1.05               # per-building override of construction.time_growth
+  pop_per_level: 5
+  cp_per_level: 10
+  requires: {palace: 10}          # also needs a ruin owned by the village (T26)

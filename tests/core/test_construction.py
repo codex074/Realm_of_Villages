@@ -68,3 +68,15 @@ def test_queue_limit():
     assert queue_limit(9, cfg) == 1
     assert queue_limit(10, cfg) == 2
     assert queue_limit(20, cfg) == 2
+
+
+def test_per_building_growth_overrides():
+    """The monument uses its own cost/time growth (1.10 / 1.05), others use the global ones."""
+    from realm.core.construction import build_time_s, building_cost
+
+    # level 3 monument: base 500 * 1.10**2 = 605.0000000000001 -> floor 605 (hand-computed)
+    assert building_cost("monument", 3, cfg) == Res(605, 605, 605, 363)
+    # time: 3600 * 1.05**2 = 3969.0 at town hall 1, speed 1
+    assert abs(build_time_s("monument", 3, 1, 1, cfg) - 3969.0) < 1e-6
+    # a normal building still uses the global growth
+    assert building_cost("woodcutter", 2, cfg) == Res(64, 115, 51, 64)

@@ -160,7 +160,7 @@ def test_meta(s: Session) -> None:
     resp = client.get("/api/meta")
     assert resp.status_code == 200
     body = resp.json()
-    assert len(body["buildings"]) == 16
+    assert len(body["buildings"]) == 17
     assert len(body["units"]) == 9
     assert len(body["tribes"]) == 3
     for tribe in body["tribes"].values():

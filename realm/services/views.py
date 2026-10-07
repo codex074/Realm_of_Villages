@@ -193,6 +193,7 @@ class RankingRow(BaseModel):
     is_bot: bool
     villages: int
     population: int
+    monument: int = 0
 
 
 class StateView(BaseModel):

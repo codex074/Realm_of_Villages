@@ -40,7 +40,8 @@
 | T23 | merged | 2 | a,b=Qwen รอบแรกผ่าน; Claude แก้ compute_rates ให้ใช้ query เดียวแทน 4 query (hot path), c=Claude ทำเอง (map panel); ตัวเลขสัตว์/โบนัสเป็นค่าที่ Claude ตั้งเอง รอทบทวน |
 | T24 | in-review | 2 | โค้ด expand/conquer/defend merged (Qwen a รอบแรก, b สองรอบ); เกณฑ์ sim 20 วัน@1x ยังไม่ผ่านตามตัวอักษร: นักขยาย 1.6 หมู่บ้าน (ต้อง ≥3), ขุนศึกยึดเมือง 0, ผู้นำ 0 เพราะเศรษฐกิจ/แต้มวัฒนธรรมโตช้า (CP 20 วัน ≈ 2.4–4k ต้องใช้ 8000 สำหรับหมู่บ้านที่ 3; ผู้นำ 1 ตัว 7000/6000/7000/5000 + วัง L15); กำลังวัดที่ speed 3 (= 60 วัน@1x) ก่อนตัดสินใจ balance |
 | T25 | merged | 3 | a รอบแรกผ่าน; b สองรอบ; Claude แก้ไทยเพี้ยน (ส่่ง, ได้ร่ับ) ; ทดสอบ test ล้มสุ่ม 1 ครั้งเกิดจากผมรัน pytest ซ้อนกับ wrapper ของ Qwen บน DB เดียวกัน (อย่าทำ) |
-| T26 | todo | 0 | endgame |
+| T26a | committed | 1 | Qwen ทำครบทุกข้อแต่ session ชน context 131k ตอนท้าย (โจทย์ใหญ่เกิน → แบ่ง task ให้เล็กลง หรือใช้ test_cmd แคบ); Claude แก้ 2 test เดิมที่ต้องเปลี่ยน (monument option, จำนวน event) |
+| T26b | todo | 0 | bots (ruins race + monument) + web (map/ranking/report) |
 | T08 | merged | 1 | Claude แก้ healthcheck (ขาด "CMD"); build+up จริงผ่าน: migrate, เว็บ/API/WS ผ่าน Caddy :8080, engine ทำงาน, backup.sh ใช้ได้ |
 
 สถานะที่ใช้: todo · delegated · in-review · merged · blocked · claude-fallback

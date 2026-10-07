@@ -76,3 +76,14 @@ market:                            # marketplace trade (T25)
   merchant_speed: 16               # tiles per hour at 1x for resource shipments
   capacity_per_level: 500          # total resources per shipment = market level x this
   npc_fee: 0.10                    # fee when exchanging resources with the NPC market (1:1 minus fee)
+
+ruins:                             # endgame: ancient ruins and the monument race (T26)
+  appear_day: 41                   # game days at 1x (divided by world speed) before the ruins appear
+  count: 5
+  min_center_distance: 12          # ruins lie in this ring around (0, 0)
+  max_center_distance: 40
+  min_gap: 15                      # minimum distance between two ruins
+  min_village_gap: 4               # minimum distance from any village
+  monument_win_level: 50           # first village to reach this monument level wins the world
+  guardians:                       # NPC defenders of a ruin (they never attack)
+    stone_guard: {name_th: ผู้พิทักษ์ศิลา, def_inf: 150, def_cav: 150, count: 40}

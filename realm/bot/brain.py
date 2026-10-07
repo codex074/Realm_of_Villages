@@ -25,8 +25,10 @@ _WEIGHT_KEYS = {
     "expand": "expand",
     "conquer": "conquer",
     "defend": "defend",
+    "monument": "monument",
+    "ruins_race": "ruins_race",
 }
-_BUILD_WEIGHT_KEYS = {"economy", "storage", "build"}
+_BUILD_WEIGHT_KEYS = {"economy", "storage", "build", "monument"}
 _MAX_FAILED_PER_KIND = 3
 _MODULES = (
     modules.field_upgrades,
@@ -37,6 +39,8 @@ _MODULES = (
     modules.expand,
     modules.conquer,
     modules.defend,
+    modules.monument,
+    modules.ruins_race,
 )
 
 
@@ -74,8 +78,8 @@ def collect_candidates(
                 continue  # every build action would fail with QUEUE_FULL
             for action in module(ctx):
                 key = _WEIGHT_KEYS[action.module]
-                weight = personality.weights.get(key, 1.0 if key == "defend" else 0.0)
-                if action.module in ("training", "raid", "conquer") and early:
+                weight = personality.weights.get(key, 1.0 if key in ("defend", "monument") else 0.0)
+                if action.module in ("training", "raid", "conquer", "ruins_race") and early:
                     weight *= 0.3
                 if weight <= 0:
                     continue

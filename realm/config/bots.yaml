@@ -47,7 +47,7 @@ personalities:
   warlord:
     name_th: ขุนศึก
     share: 0.10
-    weights: {economy: 0.8, build: 1.0, storage: 1.0, military: 1.5, raid: 1.2, expand: 0.5, conquer: 1.5}
+    weights: {economy: 0.8, build: 1.0, storage: 1.0, military: 1.5, raid: 1.2, expand: 0.5, conquer: 1.5, ruins_race: 1.5}
     army_hours: 12
     unit_mix: {swordsman: 0.4, heavy_cavalry: 0.4, ram: 0.1, catapult: 0.1}
     raid_radius: 20

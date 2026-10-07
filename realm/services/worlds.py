@@ -177,6 +177,13 @@ def create_world(
         game_epoch + timedelta(seconds=cfg.oasis.respawn_hours * 3600 / speed),
         {},
     )
+    events.schedule(
+        s,
+        world.id,
+        EventType.RUINS_APPEAR,
+        game_epoch + timedelta(seconds=cfg.ruins.appear_day * 86400 / speed),
+        {},
+    )
     s.flush()
     return world
 
@@ -237,13 +244,20 @@ def resume(s: Session, real_now: datetime) -> World:
     return world
 
 
-def end_round(s: Session, world_id: int, now: datetime, cfg: GameConfig) -> None:
-    """ROUND_END: crown the top-ranked player, end the world and report to every player."""
+def end_round(
+    s: Session,
+    world_id: int,
+    now: datetime,
+    cfg: GameConfig,
+    winner_player_id: int | None = None,
+    reason: str = "round",
+) -> None:
+    """ROUND_END: crown the top-ranked player (or a given one), end the world and report all."""
     world = s.get(World, world_id)
     if world is None or world.status != "running":
         return
     rows = ranking.get_ranking(s, world_id, cfg)
-    winner = rows[0]
+    winner = next((row for row in rows if row.player_id == winner_player_id), rows[0])
     world.status = "ended"
     world.winner_player_id = winner.player_id
     top = [row.model_dump(mode="json") for row in rows[:10]]
@@ -262,6 +276,7 @@ def end_round(s: Session, world_id: int, now: datetime, cfg: GameConfig) -> None
                 },
                 "top": top,
                 "your_rank": row.rank,
+                "reason": reason,
             },
             now,
         )
@@ -377,7 +392,7 @@ def get_map(
                 "is_bot": owner.is_bot,
             }
         oasis_dict: dict | None = None
-        if tile is not None and tile.kind == TileKind.OASIS.value:
+        if tile is not None and tile.kind in (TileKind.OASIS.value, TileKind.RUIN.value):
             owned_by_me = False
             if tile.oasis_owner_village_id is not None:
                 owner_village = s.get(Village, tile.oasis_owner_village_id)
