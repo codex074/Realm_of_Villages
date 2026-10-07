@@ -594,3 +594,62 @@ body {
   background: var(--surface);
   color: var(--text);
 }
+
+/* reports + ranking + training */
+
+.unread {
+  font-weight: bold;
+}
+
+.list-row.clickable {
+  cursor: pointer;
+}
+
+.list-row.clickable:hover {
+  background: var(--bg);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table th,
+.table td {
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  text-align: left;
+}
+
+tr.me {
+  background: #e8f0e2;
+  font-weight: bold;
+}
+
+.tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.banner {
+  padding: 12px;
+  margin: 8px 0;
+  font-size: 18px;
+  font-weight: bold;
+  text-align: center;
+  background: #e8f0e2;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.banner.negative {
+  background: #f5e3df;
+  color: var(--danger);
+}

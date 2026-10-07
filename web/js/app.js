@@ -306,6 +306,14 @@ function navMatches(i, path, id) {
   }
 }
 
+// Set the 'รายงาน' nav link (index 3) label, adding the unread count when > 0.
+function updateReportsBadge() {
+  const link = navLinks[3];
+  if (!link) return;
+  const n = state?.unread_reports ?? 0;
+  link.textContent = n > 0 ? `รายงาน (${n})` : 'รายงาน';
+}
+
 function updateNav() {
   const route = parseRoute();
   const path = route ? route.path : '';
@@ -313,6 +321,7 @@ function updateNav() {
     if (villageId != null) link.href = `#/${navTarget(i, villageId)}`;
     link.classList.toggle('active', villageId != null && navMatches(i, path, villageId));
   });
+  updateReportsBadge();
 }
 
 // ---- Countdowns ----
@@ -336,6 +345,17 @@ function tickCountdowns() {
 function navigate(hash) {
   location.hash = hash;
 }
+
+// A report was opened: refetch state and refresh only the badge/top bar.
+window.addEventListener('reports-read', async () => {
+  try {
+    state = await api.get('/state');
+    syncClock(state.game_now);
+    updateTopbar();
+  } catch (err) {
+    if (err instanceof ApiError) toast(err.message, true);
+  }
+});
 
 onChanged((msg) => {
   if (msg.village_id !== null && msg.village_id !== villageId) return;
