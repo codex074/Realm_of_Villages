@@ -1,0 +1,27 @@
+{
+  "id": "T50",
+  "title": "intel API: incoming attacks, travel times, last raid/scout intel for a tile",
+  "read": [
+    "realm/db/models.py",
+    "realm/core/movement.py",
+    "realm/services/villages.py",
+    "realm/services/military.py",
+    "realm/services/errors.py",
+    "realm/api/deps.py",
+    "realm/api/main.py",
+    "realm/api/routes/world.py",
+    "tests/api/test_api_phase0.py",
+    "tests/services/test_military_send.py"
+  ],
+  "write": [
+    "realm/services/intel.py",
+    "realm/api/routes/intel.py",
+    "realm/api/main.py",
+    "tests/services/test_intel.py",
+    "tests/api/test_api_intel.py"
+  ],
+  "test_cmd": "uv run pytest tests/services/test_intel.py tests/api/test_api_intel.py tests/api/test_api_phase0.py -q",
+  "criteria": "NEW file realm/services/intel.py with three functions and NEW router realm/api/routes/intel.py (include it in realm/api/main.py with prefix '/api' via one small Edit).\n1. `incoming_attacks(s, player_id, now) -> list[dict]`: every Movement with status 'moving' whose to_village_id belongs to a village of this player, mission in ('attack', 'raid', 'scout') and Movement.player_id != player_id; each item {'id','mission','arrive_at','to_village_id','to_village_name','from': {'x','y','name'}} (from = the attacker's from_village); sorted by arrive_at ascending. Do NOT reveal units. Route: GET /api/incoming (deps.get_player, deps.get_session, deps.get_now) -> that list.\n2. `travel_times(s, player_id, village_id, to_x, to_y, cfg) -> dict`: village must exist (GameError NOT_FOUND villages.VILLAGE_NOT_FOUND_TH) and belong to the player (GameError FORBIDDEN villages.FORBIDDEN_TH); distance = movement.distance(village.x, village.y, to_x, to_y, world.size); for every unit type with a positive count of troops at home (Troop.home_village_id == Troop.location_village_id == village.id) seconds = movement.travel_time_s({unit: 1}, player.tribe, distance, world.speed, cfg); returns {'distance': round(distance, 2), 'units': {unit: seconds}} (units empty when no troops at home). Route: GET /api/villages/{village_id}/travel?x=&y= .\n3. `tile_intel(s, player_id, x, y) -> dict`: looks at the player's own Report rows (newest first, at most the 300 newest) and finds the newest report whose data['target'] has x and y equal to the given coordinates: 'last_attack' = newest report with data.get('mission') in ('attack','raid') -> {'report_id','created_at','mission','loot' (data.get('loot') or {}),'attacker_won' (data.get('attacker_won'))}; 'last_scout' = newest report with data.get('mission') == 'scout' and data.get('success') true -> {'report_id','created_at','troops' (data.get('troops') or {}),'resources' (data.get('resources'))}; each is None when not found. Only reports where the player was the attacker count: data.get('attacker', {}).get('player_id') == player_id when that key exists, otherwise accept the report (look at realm/services/military.py to see which keys the battle/scout report payloads have and adapt; document what you used in a comment). Route: GET /api/map/intel?x=&y= .\nTests: services: incoming lists a raid sent by a bot at the human village (use military.send_troops from a bot village after giving the bot troops and a rally point and ending protection: set the human player's protection_until to t0 so hostile sends are allowed; copy setup from tests/services/test_military_send.py), sorted by arrive_at, excludes the player's own outgoing movements and reinforcements; travel_times returns per-unit seconds that match movement.travel_time_s, empty units without troops, FORBIDDEN for another player's village; tile_intel returns None/None with no reports, and the newest attack/scout after inserting Report rows directly (kind 'battle' / 'scout', data with mission, target {'x','y'}, loot, attacker_won, success, troops). API: 200 shapes for the three routes and 403 for travel from a bot village.",
+  "notes": "- Thai strings: do not write new Thai; reuse the existing constants named above.\n- Never commit; never call datetime.now() in services (API routes may: datetime.now(UTC)); run only the test_cmd files.\n- Real columns only in tests (check realm/db/models.py). Tests use the DB fixtures `s`, `cfg`, `t0` from tests/conftest.py and build a world with realm.services.worlds.create_world(s, seed=..., speed=1, player_name='ผู้เล่น', tribe='stonehold', bot_count=..., cfg=cfg, real_now=t0).\n- API tests: TestClient(create_app(serve_static=False)) with app.dependency_overrides[get_session] yielding the rollback `s` fixture; copy the exact fixture pattern from tests/api/test_api_phase0.py.\n- Existing files that contain Thai text must be changed ONLY with small targeted Edit operations, never rewritten.",
+  "spec": []
+}

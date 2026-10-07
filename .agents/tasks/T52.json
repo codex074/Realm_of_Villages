@@ -1,0 +1,26 @@
+{
+  "id": "T52",
+  "title": "farm lists: service + API (tables already exist)",
+  "read": [
+    "realm/db/models.py",
+    "realm/services/military.py",
+    "realm/services/errors.py",
+    "realm/services/villages.py",
+    "realm/api/deps.py",
+    "realm/api/main.py",
+    "realm/api/routes/military.py",
+    "tests/api/test_api_phase0.py",
+    "tests/services/test_military_send.py"
+  ],
+  "write": [
+    "realm/services/farmlists.py",
+    "realm/api/routes/farmlists.py",
+    "realm/api/main.py",
+    "tests/services/test_farmlists.py",
+    "tests/api/test_api_farmlists.py"
+  ],
+  "test_cmd": "uv run pytest tests/services/test_farmlists.py tests/api/test_api_farmlists.py tests/api/test_api_phase0.py -q",
+  "criteria": "Tables exist: FarmList(id, player_id, village_id, name, created_at) and FarmListEntry(id, list_id, x, y, units JSONB, created_at) in realm/db/models.py (migration 0004). NEW realm/services/farmlists.py and NEW realm/api/routes/farmlists.py (include in main.py with prefix '/api', one small Edit). Constants MAX_LISTS = 10, MAX_ENTRIES = 100.\nService:\n`create_list(s, player_id, village_id, name, now) -> FarmList`: village must belong to the player (NOT_FOUND villages.VILLAGE_NOT_FOUND_TH if missing, FORBIDDEN villages.FORBIDDEN_TH if not owned); name stripped 1..30 chars (INVALID_TARGET 'ชื่อรายการไม่ถูกต้อง'); at most MAX_LISTS per player (INVALID_TARGET 'รายการฟาร์มเต็มแล้ว').\n`delete_list(s, player_id, list_id)`: deletes entries and list; not found or not the player's -> NOT_FOUND 'ไม่พบรายการฟาร์ม'.\n`add_entry(s, player_id, list_id, x, y, units, now, cfg) -> FarmListEntry`: list must be the player's (NOT_FOUND 'ไม่พบรายการฟาร์ม'); units: dict of known unit keys (cfg.units) with positive ints, at least one (INVALID_UNITS 'ระบุทหารไม่ถูกต้อง'); at most MAX_ENTRIES (INVALID_TARGET 'รายการฟาร์มเต็มแล้ว'); the same (x, y) twice in a list -> INVALID_TARGET 'มีเป้าหมายนี้ในรายการแล้ว'.\n`remove_entry(s, player_id, list_id, entry_id)`: NOT_FOUND 'ไม่พบเป้าหมาย' when the entry is not in that list of that player.\n`get_lists(s, player_id) -> list[dict]`: [{'id','name','village_id','entries': [{'id','x','y','units'}] (by id)}] by list id.\n`send_list(s, player_id, list_id, now, cfg, entry_ids: list[int] | None = None) -> list[dict]`: for every entry (or only the given ids) call military.send_troops(s, player_id, list.village_id, x, y, Mission.RAID, entry.units, now, cfg) inside `with s.begin_nested():` so one failure does not undo the others; result per entry {'entry_id', 'ok': bool, 'error': GameError.message or None, 'movement_id' or None}.\nRoutes (deps.get_player, get_session, get_cfg, require_running for mutations, datetime.now(UTC) in the route): GET /farmlists; POST /farmlists {village_id, name}; DELETE /farmlists/{id}; POST /farmlists/{id}/entries {x, y, units}; DELETE /farmlists/{id}/entries/{entry_id}; POST /farmlists/{id}/send {entry_ids?: list[int] | None} -> results. Body models are defined in routes/farmlists.py itself (pydantic BaseModel) so schemas.py is not edited.\nTests: services cover create (ok, bad name, 11th list), FORBIDDEN for another player's village, add_entry (ok, unknown unit, zero count, duplicate coords), remove/delete, get_lists shape, send_list: with troops at home sends a raid (Movement exists, troops deducted) and with not enough troops for a second entry that entry is ok False with an error message while the first stays sent (set up troops/rally point/protection like tests/services/test_military_send.py; raid targets must be other players' villages not under protection: set their protection_until to t0). API: the main routes return 200 and the expected JSON; 404 for another player's list.",
+  "notes": "- Thai strings: use ONLY the exact strings quoted above (copy letter by letter, Qwen often doubles tone marks); reuse existing constants for the rest.\n- Never commit; never call datetime.now() in services (API routes may: datetime.now(UTC)); run only the test_cmd files.\n- Real columns only in tests (check realm/db/models.py). Tests use the DB fixtures `s`, `cfg`, `t0` from tests/conftest.py and build a world with realm.services.worlds.create_world(s, seed=..., speed=1, player_name='ผู้เล่น', tribe='stonehold', bot_count=..., cfg=cfg, real_now=t0).\n- API tests: TestClient(create_app(serve_static=False)) with app.dependency_overrides[get_session] yielding the rollback `s` fixture; copy the exact fixture pattern from tests/api/test_api_phase0.py.\n- Existing files that contain Thai text must be changed ONLY with small targeted Edit operations, never rewritten.",
+  "spec": []
+}

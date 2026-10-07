@@ -337,3 +337,32 @@ class AuditLog(Base):
     path: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class FarmList(Base):
+    """A saved list of raid targets, sent together from one village."""
+
+    __tablename__ = "farm_lists"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    player_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("players.id"), nullable=False, index=True
+    )
+    village_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("villages.id"), nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class FarmListEntry(Base):
+    """One target of a farm list: coordinates and the units to send there."""
+
+    __tablename__ = "farm_list_entries"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    list_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("farm_lists.id"), nullable=False, index=True
+    )
+    x: Mapped[int] = mapped_column(Integer, nullable=False)
+    y: Mapped[int] = mapped_column(Integer, nullable=False)
+    units: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
