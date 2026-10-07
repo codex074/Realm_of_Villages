@@ -6,6 +6,7 @@ import re
 import sys
 
 PAT = re.compile(r"([ัิ-ฺ็-๎])\1|[่-๋][่-๋]|[่-๋][ิ-ื]")
+KNOWN_BAD = ("บ่าน", "ท่ี", "น้ี", "อับดับ", "แผนท่ี")  # typos Qwen has produced before
 bad = 0
 files = [
     *glob.glob("realm/**/*.py", recursive=True),
@@ -19,7 +20,7 @@ for f in files:
     except (UnicodeDecodeError, IsADirectoryError):
         continue
     for i, line in enumerate(text.splitlines(), 1):
-        if PAT.search(line):
+        if PAT.search(line) or any(w in line for w in KNOWN_BAD):
             print(f"{f}:{i}: {line.strip()[:100]}")
             bad += 1
 sys.exit(1 if bad else 0)

@@ -28,15 +28,14 @@ def test_create_world_full_state(s, cfg, t0: datetime) -> None:
     assert world.ends_at == t0 + timedelta(seconds=60 * 86400)  # 60 days at speed 1
 
     tiles = s.scalars(select(Tile).where(Tile.world_id == world.id)).all()
-    assert len(tiles) == 1
-    assert tiles[0].x == 0
-    assert tiles[0].y == 0
-    assert tiles[0].kind == "valley"
-    assert tiles[0].layout == "4-4-4-6"
+    assert len(tiles) == 10201
+    center = next(t for t in tiles if t.x == 0 and t.y == 0)
+    assert center.kind == "valley"
+    assert center.layout == "4-4-4-6"
 
     players = s.scalars(select(Player).where(Player.world_id == world.id)).all()
-    assert len(players) == 1
-    player = players[0]
+    assert len(players) == 31
+    player = next(p for p in players if not p.is_bot)
     assert player.is_bot is False
     assert player.tribe == "stonehold"
     assert player.production_mult == 1.0
@@ -45,8 +44,8 @@ def test_create_world_full_state(s, cfg, t0: datetime) -> None:
     assert player.protection_until == t0 + timedelta(seconds=72 * 3600)  # 72h at speed 1
 
     villages = s.scalars(select(Village).where(Village.world_id == world.id)).all()
-    assert len(villages) == 1
-    village = villages[0]
+    assert len(villages) == 31
+    village = next(v for v in villages if v.player_id == player.id)
     assert village.x == 0
     assert village.y == 0
     assert village.layout == "4-4-4-6"
@@ -84,7 +83,9 @@ def test_create_world_speed_scales_durations(s, cfg, t0: datetime) -> None:
     world = _make(s, cfg, t0, speed=10)
     assert world.speed == 10
     assert world.ends_at == t0 + timedelta(seconds=518400)  # 60 days / 10
-    player = s.scalars(select(Player).where(Player.world_id == world.id)).one()
+    player = next(
+        p for p in s.scalars(select(Player).where(Player.world_id == world.id)) if not p.is_bot
+    )
     assert player.protection_until == t0 + timedelta(seconds=72 * 3600 / 10)
 
 
