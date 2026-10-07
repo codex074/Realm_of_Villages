@@ -2,7 +2,7 @@
 
 import { api, ApiError } from './api.js';
 import { syncClock, gameNow, countdown, remainingMs } from './clock.js';
-import { fmtNum, fmtRate, fmtTime } from './format.js';
+import { fmtNum, fmtRate, fmtTime, fmtDuration } from './format.js';
 import { onChanged } from './ws.js';
 import { h, clear } from './dom.js';
 
@@ -259,6 +259,12 @@ function showResTip(k, pill) {
     h('div', { class: 'res-tip-main' }, `${RES_NAMES[k]} `, h('b', { class: rate < 0 ? 'negative' : '' }, `${rate >= 0 ? '+' : ''}${fmtRate(rate)}/ชม.`)),
     h('div', { class: 'res-tip-sub' }, `คลัง ${fmtNum(have)} / ${fmtNum(cap)}`),
   );
+  const speed = (state && state.speed) || 1;
+  let note = '';
+  if (have >= cap) note = 'คลังเต็มแล้ว';
+  else if (rate > 0) note = `เต็มในอีก ${fmtDuration(((cap - have) / rate) * (3600 / speed))}`;
+  else if (rate < 0) note = `หมดในอีก ${fmtDuration((have / -rate) * (3600 / speed))}`;
+  if (note) resTip.append(h('div', { class: 'res-tip-sub' }, note));
   const r = pill.getBoundingClientRect();
   resTip.style.left = `${Math.max(6, Math.min(window.innerWidth - 170, r.left))}px`;
   resTip.style.top = `${r.bottom + 6}px`;

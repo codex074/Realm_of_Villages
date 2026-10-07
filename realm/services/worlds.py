@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from realm.core import movement, worldgen
+from realm.core import economy, movement, worldgen
 from realm.core.clock import game_now
 from realm.core.config import GameConfig, ResAmount
 from realm.core.names import BOT_NAMES
@@ -445,6 +445,7 @@ def get_map(
     cy: int,
     r: int,
     cfg: GameConfig,
+    now: datetime | None = None,
 ) -> MapView:
     """The map area of (2r+1) x (2r+1) tiles around a torus-wrapped center."""
     if not 0 <= r <= 10:
@@ -500,6 +501,7 @@ def get_map(
         village_dict: dict | None = None
         if village is not None:
             owner = players[village.player_id]
+            protected = now is not None and owner.protection_until > now
             village_dict = {
                 "id": village.id,
                 "name": village.name,
@@ -515,6 +517,8 @@ def get_map(
                     and viewer_alliance is not None
                     and names.get(village.player_id) == viewer_alliance
                 ),
+                "protected": protected,
+                "protected_until": owner.protection_until if protected else None,
             }
         oasis_dict: dict | None = None
         if tile is not None and tile.kind in (TileKind.OASIS.value, TileKind.RUIN.value):
@@ -555,6 +559,10 @@ def find_nearest(
     resource: str | None = None,
     who: str = "all",
     limit: int = 20,
+    now: datetime | None = None,
+    min_pop: int | None = None,
+    max_pop: int | None = None,
+    cfg: GameConfig | None = None,
 ) -> list[dict]:
     """Nearest map targets from (from_x, from_y), sorted by torus distance.
 
@@ -581,7 +589,22 @@ def find_nearest(
             stmt = stmt.where(Player.is_bot.is_(False))
         names = alliances.alliance_names(s, world_id)
         mine = names.get(player_id)
-        for v, p in s.execute(stmt).all():
+        rows = s.execute(stmt).all()
+        buildings: dict[int, list[tuple[str, int]]] = {}
+        if rows:
+            for village_id, btype, level in s.execute(
+                select(Building.village_id, Building.type, Building.level).where(
+                    Building.village_id.in_([v.id for v, _ in rows])
+                )
+            ).all():
+                buildings.setdefault(village_id, []).append((btype, level))
+        for v, p in rows:
+            population = economy.population(buildings.get(v.id, []), cfg) if cfg is not None else 0
+            if min_pop is not None and population < min_pop:
+                continue
+            if max_pop is not None and population > max_pop:
+                continue
+            protected = now is not None and p.protection_until > now
             out.append(
                 {
                     "x": v.x,
@@ -592,6 +615,8 @@ def find_nearest(
                     "player_name": p.name,
                     "is_bot": p.is_bot,
                     "is_ally": mine is not None and names.get(p.id) == mine,
+                    "population": population,
+                    "protected": protected,
                 }
             )
     else:

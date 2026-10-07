@@ -1,9 +1,11 @@
 """World routes: map and ranking (BUILD.md section 9, Phase 1)."""
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from realm.api.deps import get_cfg, get_player, get_session, get_world
+from realm.api.deps import get_cfg, get_now, get_player, get_session, get_world
 from realm.core.config import GameConfig
 from realm.db.models import Player, World
 from realm.services import ranking, worlds
@@ -21,9 +23,10 @@ def get_map(
     cfg: GameConfig = Depends(get_cfg),  # noqa: B008
     player: Player = Depends(get_player),  # noqa: B008
     world: World = Depends(get_world),  # noqa: B008
+    now: datetime = Depends(get_now),  # noqa: B008
 ) -> MapView:
     """Return the map area of (2r+1) x (2r+1) tiles around (cx, cy)."""
-    return worlds.get_map(s, world.id, player.id, cx, cy, r, cfg)
+    return worlds.get_map(s, world.id, player.id, cx, cy, r, cfg, now=now)
 
 
 @router.get("/ranking", response_model=list[RankingRow])
@@ -44,9 +47,27 @@ def nearest_route(
     resource: str | None = None,
     who: str = "all",
     limit: int = 20,
+    min_pop: int | None = None,
+    max_pop: int | None = None,
     s: Session = Depends(get_session),  # noqa: B008
+    cfg: GameConfig = Depends(get_cfg),  # noqa: B008
     player: Player = Depends(get_player),  # noqa: B008
     world: World = Depends(get_world),  # noqa: B008
+    now: datetime = Depends(get_now),  # noqa: B008
 ) -> list[dict]:
     """Nearest villages, oases, free valleys or ruins from a coordinate, closest first."""
-    return worlds.find_nearest(s, world.id, player.id, from_x, from_y, kind, resource, who, limit)
+    return worlds.find_nearest(
+        s,
+        world.id,
+        player.id,
+        from_x,
+        from_y,
+        kind,
+        resource,
+        who,
+        limit,
+        now=now,
+        min_pop=min_pop,
+        max_pop=max_pop,
+        cfg=cfg,
+    )

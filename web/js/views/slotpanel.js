@@ -1,7 +1,7 @@
 // Shared build queue panel and slot bottom sheet (BUILD.md section 10).
 
 import { api, ApiError } from '../api.js';
-import { h, icon } from '../dom.js';
+import { h, icon, clear } from '../dom.js';
 import { countdown } from '../clock.js';
 import { fmtNum, fmtDuration, fmtRate } from '../format.js';
 import { unitLabel } from '../units.js';
@@ -338,58 +338,72 @@ async function appendMarket(ctx, sheet) {
   } catch {
     return;
   }
-  sheet.append(h('h3', {}, 'ส่งทรัพยากร'));
-  sheet.append(h('div', { class: 'muted' }, `ความจุต่อเที่ยว ${fmtNum(info.capacity)}`));
+  const have = (k) => Math.floor(ctx.village.resources[k] ?? 0);
+  const resLabel = (k) => h('span', { class: 'unit-label' }, icon(k, 'ico unit-icon'), RES_LABELS[k]);
+
+  // ---- send to my other villages ----
+  sheet.append(h('h3', { class: 'market-head' }, icon('marketplace', 'ico unit-icon'), ' ส่งทรัพยากรไปหมู่บ้านอื่นของคุณ'));
   const others = (ctx.state.villages || []).filter((v) => v.id !== ctx.villageId);
   if (!others.length) {
-    sheet.append(h('div', { class: 'muted' }, 'ไม่มีหมู่บ้านปลายทาง'));
-    return;
+    sheet.append(h('div', { class: 'slot-option muted' }, 'ยังไม่มีหมู่บ้านปลายทาง (ต้องมีหมู่บ้านมากกว่า 1 แห่ง)'));
+  } else {
+    const dest = h('select', {}, ...others.map((v) => h('option', { value: String(v.id) }, `${v.name} (${v.x}, ${v.y})`)));
+    const inputs = {};
+    const total = h('div', { class: 'market-total' });
+    const updateTotal = () => {
+      const sum = RES_KEYS.reduce((a, k) => a + (Number(inputs[k].value) || 0), 0);
+      total.textContent = `รวม ${fmtNum(sum)} / ${fmtNum(info.capacity)} ต่อเที่ยว`;
+      total.classList.toggle('negative', sum > info.capacity);
+    };
+    const rows = RES_KEYS.map((k) => {
+      inputs[k] = h('input', { type: 'number', min: '0', value: '0' });
+      inputs[k].addEventListener('input', updateTotal);
+      const maxBtn = h('button', { class: 'btn small', type: 'button' }, 'สูงสุด');
+      maxBtn.addEventListener('click', () => {
+        const used = RES_KEYS.filter((o) => o !== k).reduce((a, o) => a + (Number(inputs[o].value) || 0), 0);
+        inputs[k].value = String(Math.max(0, Math.min(have(k), info.capacity - used)));
+        updateTotal();
+      });
+      return h('div', { class: 'market-row' }, resLabel(k), h('span', { class: 'muted' }, `มี ${fmtNum(have(k))}`), inputs[k], maxBtn);
+    });
+    updateTotal();
+    const sendBtn = h('button', { class: 'btn btn-primary' }, 'ส่งทรัพยากร');
+    sendBtn.addEventListener('click', () => doSend(sendBtn, ctx, Number(dest.value), inputs));
+    sheet.append(h('div', { class: 'slot-option' }, ...rows, total, h('div', { class: 'market-row' }, h('span', {}, 'ไปที่'), dest), sendBtn));
   }
-  const dest = h(
-    'select',
-    {},
-    ...others.map((v) => h('option', { value: String(v.id) }, v.name)),
-  );
-  const inputs = {};
-  for (const k of RES_KEYS) {
-    inputs[k] = h('input', { type: 'number', min: '0', value: '0' });
-  }
-  const sendBtn = h('button', { class: 'btn btn-primary' }, 'ส่ง');
-  sendBtn.addEventListener('click', () => doSend(sendBtn, ctx, Number(dest.value), inputs));
-  sheet.append(
-    h('div', { class: 'slot-option' },
-      ...RES_KEYS.map((k) => h('div', { class: 'unit-row' }, h('span', {}, RES_LABELS[k]), inputs[k])),
-      dest,
-      sendBtn,
-    ),
-  );
-  sheet.append(h('h3', {}, 'แลกทรัพยากร'));
-  const giveSel = h(
-    'select',
-    {},
-    ...RES_KEYS.map((k) => h('option', { value: k }, RES_LABELS[k])),
-  );
-  const takeSel = h(
-    'select',
-    {},
-    ...RES_KEYS.map((k) => h('option', { value: k }, RES_LABELS[k])),
-  );
-  const amount = h('input', { type: 'number', min: '1', value: '1' });
-  const preview = h('div', { class: 'muted' });
+
+  // ---- exchange with the NPC trader ----
+  sheet.append(h('h3', { class: 'market-head' }, icon('marketplace', 'ico unit-icon'), ' แลกกับพ่อค้า'));
+  const giveSel = h('select', {}, ...RES_KEYS.map((k) => h('option', { value: k }, RES_LABELS[k])));
+  const takeSel = h('select', {}, ...RES_KEYS.map((k) => h('option', { value: k }, RES_LABELS[k])));
+  takeSel.value = 'food';
+  const amount = h('input', { type: 'number', min: '1', value: '100' });
+  const preview = h('div', { class: 'market-preview' });
   const updatePreview = () => {
     const n = Number(amount.value) || 0;
-    preview.textContent = `ได้รับ ${Math.floor(n * (1 - info.fee))}`;
+    clear(preview);
+    preview.append(
+      'ให้ ', h('b', {}, fmtNum(n)), ' ', resLabel(giveSel.value), ' → ได้ ', h('b', {}, fmtNum(Math.floor(n * (1 - info.fee)))), ' ', resLabel(takeSel.value),
+    );
+    if (n > have(giveSel.value)) preview.append(h('div', { class: 'negative' }, `มี${RES_LABELS[giveSel.value]}ไม่พอ (มี ${fmtNum(have(giveSel.value))})`));
+    if (giveSel.value === takeSel.value) preview.append(h('div', { class: 'negative' }, 'เลือกทรัพยากรคนละชนิด'));
   };
-  amount.addEventListener('input', updatePreview);
+  for (const e of [amount, giveSel, takeSel]) e.addEventListener('input', updatePreview);
+  for (const e of [giveSel, takeSel]) e.addEventListener('change', updatePreview);
+  const allBtn = h('button', { class: 'btn small', type: 'button' }, 'ทั้งหมด');
+  allBtn.addEventListener('click', () => {
+    amount.value = String(have(giveSel.value));
+    updatePreview();
+  });
   updatePreview();
   const exBtn = h('button', { class: 'btn btn-primary' }, 'แลก');
-  exBtn.addEventListener('click', () =>
-    doExchange(exBtn, ctx, giveSel.value, takeSel.value, Number(amount.value) || 0),
-  );
+  exBtn.addEventListener('click', () => doExchange(exBtn, ctx, giveSel.value, takeSel.value, Number(amount.value) || 0));
   sheet.append(
     h('div', { class: 'slot-option' },
-      h('div', { class: 'unit-row' }, giveSel, takeSel, amount),
+      h('div', { class: 'market-row' }, h('span', {}, 'ให้'), giveSel, amount, allBtn),
+      h('div', { class: 'market-row' }, h('span', {}, 'รับ'), takeSel),
       preview,
+      h('div', { class: 'muted' }, `ค่าธรรมเนียม ${Math.round(info.fee * 100)}%`),
       exBtn,
     ),
   );
