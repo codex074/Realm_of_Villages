@@ -322,3 +322,6 @@ body.scene-page #view { padding: 0; min-height: 0; height: 0; }
 .production details { margin-top: 6px; }
 .production summary { cursor: pointer; color: var(--muted); font-size: 13px; }
 .prod-row { flex-wrap: wrap; gap: 4px 10px; }
+
+.build-progress { border-color: var(--gold); background: rgba(241, 215, 122, 0.25); }
+.build-progress .countdown { font-size: 1.15em; font-weight: 700; color: var(--blood); }

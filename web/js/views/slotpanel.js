@@ -116,20 +116,36 @@ export async function openSlotPanel(el, ctx, slot) {
     if (err instanceof ApiError) ctx.toast(err.message, true);
     return;
   }
-  const underConstruction = ctx.village.build_queue.some((q) => q.slot === slot);
+  const queued = ctx.village.build_queue.find((q) => q.slot === slot);
+  const underConstruction = queued !== undefined;
   const sheet = h('div', { class: 'bottom-sheet' });
   sheet.append(
     h('button', { class: 'btn', onclick: () => sheet.remove() }, 'ปิด'),
   );
+  const queuedName = queued ? ((ctx.meta.buildings || {})[queued.type] || {}).name_th ?? queued.type : '';
   const title = view.current
     ? `${view.current.name_th ?? ''} เลเวล ${view.current.level}`
-    : `ช่องว่าง #${slot}`;
+    : queued
+      ? queuedName
+      : `ช่องว่าง #${slot}`;
   sheet.append(h('h2', { class: 'panel-heading' }, title));
-  if (underConstruction) {
-    sheet.append(h('div', { class: 'muted' }, 'กำลังก่อสร้างอยู่'));
+  if (queued) {
+    sheet.append(
+      h(
+        'div',
+        { class: 'slot-option build-progress' },
+        h('div', { class: 'slot-option-name' }, `กำลังก่อสร้างเป็นเลเวล ${queued.target_level}`),
+        h(
+          'div',
+          { class: 'prod-line' },
+          'เสร็จในอีก ',
+          h('span', { class: 'countdown', 'data-countdown': queued.finishes_at }, countdown(queued.finishes_at)),
+        ),
+      ),
+    );
   }
   if (view.production && view.current) sheet.append(productionBlock(view.production, view.current.level));
-  if (view.upgrade) {
+  if (view.upgrade && !underConstruction) {
     const btn = h(
       'button',
       {
@@ -141,10 +157,10 @@ export async function openSlotPanel(el, ctx, slot) {
     btn.addEventListener('click', () => doBuild(btn, ctx, slot, view.current.type));
     sheet.append(costBlock(ctx, view.upgrade, btn));
   }
-  for (const opt of view.options) {
+  for (const opt of underConstruction ? [] : view.options) {
     const btn = h(
       'button',
-      { class: 'btn btn-primary', disabled: !opt.affordable || underConstruction },
+      { class: 'btn btn-primary', disabled: !opt.affordable },
       'สร้าง',
     );
     btn.addEventListener('click', () => doBuild(btn, ctx, slot, opt.type));
