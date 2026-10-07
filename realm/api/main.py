@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from realm.api import ws
 from realm.api.routes import (
     admin,
+    alliances,
     auth,
     market,
     military,
@@ -77,6 +78,7 @@ def create_app(serve_static: bool = True) -> FastAPI:
     app.include_router(reports.router, prefix="/api")
     app.include_router(admin.router, prefix="/api")
     app.include_router(world_join.router, prefix="/api")
+    app.include_router(alliances.router, prefix="/api")
 
     if serve_static:
         web_dir = Path(__file__).resolve().parents[2] / "web"

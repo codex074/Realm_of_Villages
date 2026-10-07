@@ -71,6 +71,30 @@ class ExchangeBody(BaseModel):
     amount: float
 
 
+class AllianceCreateBody(BaseModel):
+    """Body of POST /api/alliance."""
+
+    name: str
+
+
+class AllianceInviteBody(BaseModel):
+    """Body of POST /api/alliance/invite."""
+
+    player_name: str
+
+
+class AllianceKickBody(BaseModel):
+    """Body of POST /api/alliance/kick."""
+
+    player_id: int
+
+
+class AllianceMessageBody(BaseModel):
+    """Body of POST /api/alliance/messages."""
+
+    text: str
+
+
 class SendBody(BaseModel):
     """Body of POST /api/villages/{id}/send and /send/preview."""
 
