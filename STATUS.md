@@ -1,6 +1,6 @@
 # STATUS
 
-อัปเดตล่าสุด: 2026-10-06
+อัปเดตล่าสุด: 2026-10-07
 
 | Task | สถานะ | ส่ง Qwen (ครั้ง) | หมายเหตุ |
 | --- | --- | --- | --- |
@@ -38,11 +38,15 @@
 | T21 | merged | 1 | ผ่านรอบแรก ไม่ต้องแก้; ข้อความไทยถูกครบเพราะให้ Qwen Edit จุดเล็ก + ไฟล์ใหม่ (conquest.py) แทนเขียนไฟล์ใหญ่ซ้ำ |
 | T22 | merged | 2 | a=Claude (table+migration+config), b,c=Qwen รอบแรกผ่านไม่ต้องแก้ (Edit จุดเล็ก → ข้อความไทยไม่เพี้ยน); ตัวเลข balance upgrades เป็นค่าที่ Claude ตั้งเอง รอผู้ใช้ทบทวน |
 | T23 | merged | 2 | a,b=Qwen รอบแรกผ่าน; Claude แก้ compute_rates ให้ใช้ query เดียวแทน 4 query (hot path), c=Claude ทำเอง (map panel); ตัวเลขสัตว์/โบนัสเป็นค่าที่ Claude ตั้งเอง รอทบทวน |
-| T24 | in-review | 2 | โค้ด expand/conquer/defend merged (Qwen a รอบแรก, b สองรอบ); เกณฑ์ sim 20 วัน@1x ยังไม่ผ่านตามตัวอักษร: นักขยาย 1.6 หมู่บ้าน (ต้อง ≥3), ขุนศึกยึดเมือง 0, ผู้นำ 0 เพราะเศรษฐกิจ/แต้มวัฒนธรรมโตช้า (CP 20 วัน ≈ 2.4–4k ต้องใช้ 8000 สำหรับหมู่บ้านที่ 3; ผู้นำ 1 ตัว 7000/6000/7000/5000 + วัง L15); กำลังวัดที่ speed 3 (= 60 วัน@1x) ก่อนตัดสินใจ balance |
 | T25 | merged | 3 | a รอบแรกผ่าน; b สองรอบ; Claude แก้ไทยเพี้ยน (ส่่ง, ได้ร่ับ) ; ทดสอบ test ล้มสุ่ม 1 ครั้งเกิดจากผมรัน pytest ซ้อนกับ wrapper ของ Qwen บน DB เดียวกัน (อย่าทำ) |
 | T26a | merged | 1 | Qwen ทำครบทุกข้อแต่ session ชน context 131k ตอนท้าย (โจทย์ใหญ่เกิน → แบ่ง task ให้เล็กลง หรือใช้ test_cmd แคบ); Claude แก้ 2 test เดิมที่ต้องเปลี่ยน (monument option, จำนวน event) |
 | T26b | merged | 1 | bots ruins_race+monument ผ่านรอบแรก (wrapper หยุด exit 4 เพราะแก้ bots.yaml/BUILD.md ตามที่สั่ง); T26c web (แผนที่/อันดับ/รายงานซาก) Claude ทำเอง |
 | T08 | merged | 1 | Claude แก้ healthcheck (ขาด "CMD"); build+up จริงผ่าน: migrate, เว็บ/API/WS ผ่าน Caddy :8080, engine ทำงาน, backup.sh ใช้ได้ |
+| T24 | merged | 2 | ผู้ใช้ตัดสินให้ผ่าน: เกณฑ์ sim ตีความเป็นรอบ 60 วัน@1x (DECISIONS_phase3.md) |
+| T30a | merged | 1 | Phase 3: accounts/sessions/auth API/get_player ตาม session; Claude แก้ไทยเพี้ยน 4 ข้อความ + แก้บั๊ก wt.sh (ชื่อ DB ตัวพิมพ์ใหญ่ทำให้ test ถูก skip เงียบ ต้องดู "skipped" ในผล pytest ทุกครั้ง) |
+| T30b | merged | 1 | join_world, admin เฉพาะ admin, pause ปิดเมื่อมนุษย์ >1; ผ่านรอบแรก ไม่ต้องแก้ |
+| T31a | merged | 1 | alliances service; logic ถูก Claude แก้ไทยเพี้ยน 5 ข้อความ |
+| T31b | delegated | 1 | alliance API |
 
 สถานะที่ใช้: todo · delegated · in-review · merged · blocked · claude-fallback
 
