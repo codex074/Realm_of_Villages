@@ -30,6 +30,8 @@ def build_state(s: Session, world: World, cfg: GameConfig) -> StateView:
                 Report.player_id == player.id, Report.is_read.is_(False)
             )
         )
+        player_dict["culture_points"] = round(villages.projected_culture(s, player, now, cfg), 2)
+        player_dict["culture_next"] = villages.culture_needed_for_next_village(s, player, cfg)
     else:
         unread = 0
     player_villages = (

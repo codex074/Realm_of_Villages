@@ -68,6 +68,8 @@ def test_new_world_and_state(s: Session) -> None:
     assert st.status_code == 200
     state = st.json()
     assert state["player"]["name"] == PLAYER_NAME
+    assert state["player"]["culture_points"] >= 0
+    assert state["player"]["culture_next"] == 2000
     assert len(state["villages"]) == 1
     assert state["paused"] is False
     assert state["speed"] == 1

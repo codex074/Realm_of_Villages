@@ -4,20 +4,21 @@ import random
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from realm.core import combat, economy, movement
+from realm.core import combat, economy, movement, slots
 from realm.core import units as units_core
 from realm.core.config import GameConfig
-from realm.core.types import EventType, Mission, Res, Units
-from realm.db.models import Building, Movement, Player, Troop, Village, World
+from realm.core.types import EventType, Mission, Res, TileKind, Units
+from realm.db.models import Building, Movement, Player, Tile, Troop, Village, World
 from realm.services import events, notify, reports, villages
 from realm.services.errors import (
     FORBIDDEN,
     INVALID_TARGET,
     INVALID_UNITS,
     NO_UNITS,
+    NOT_ENOUGH_CULTURE,
     NOT_FOUND,
     PROTECTED,
     REQUIREMENTS_NOT_MET,
@@ -28,7 +29,10 @@ from realm.services.views import SendPreview
 HOSTILE_MISSIONS = (Mission.ATTACK, Mission.RAID, Mission.SCOUT)
 
 RETURN_MISSION_TH = "ภารกิจนี้ส่งเองไม่ได้"
-SETTLE_NOT_READY_TH = "ยังไม่เปิดใช้"
+INVALID_SETTLE_TILE_TH = "ช่องนี้ตั้งหมู่บ้านไม่ได้"
+NOT_ENOUGH_CULTURE_TH = "แต้มวัฒนธรรมไม่พอ"
+SETTLE_SUCCESS_TH = "ตั้งหมู่บ้านใหม่สำเร็จ"
+SETTLE_FAILED_TH = "ตั้งหมู่บ้านใหม่ไม่สำเร็จ"
 UNKNOWN_BUILDING_TH = "ไม่พบอาคารนี้"
 SELF_TARGET_TH = "เป้าหมายคือหมู่บ้านตัวเอง"
 NO_TARGET_VILLAGE_TH = "ไม่มีหมู่บ้านที่เป้าหมาย"
@@ -103,8 +107,6 @@ def _check_send(
     problems: list[tuple[str, str]] = []
     if mission is Mission.RETURN:
         problems.append((INVALID_TARGET, RETURN_MISSION_TH))
-    if mission is Mission.SETTLE:
-        problems.append((INVALID_UNITS, SETTLE_NOT_READY_TH))
     if villages.levels(s, village.id).get("rally_point", 0) < 1:
         problems.append(
             (
@@ -119,6 +121,23 @@ def _check_send(
         problems.append((INVALID_TARGET, UNKNOWN_BUILDING_TH))
     if (tx, ty) == (village.x, village.y):
         problems.append((INVALID_TARGET, SELF_TARGET_TH))
+    elif mission is Mission.SETTLE:
+        tile = s.get(Tile, (world.id, tx, ty))
+        if tile is None or tile.kind != TileKind.VALLEY.value or target is not None:
+            problems.append((INVALID_TARGET, INVALID_SETTLE_TILE_TH))
+        else:
+            pending = s.scalar(
+                select(func.count(Movement.id)).where(
+                    Movement.player_id == player.id,
+                    Movement.mission == Mission.SETTLE.value,
+                    Movement.status == "moving",
+                )
+            )
+            need = villages.culture_needed_for_next_village(
+                s, player, cfg, extra_pending=pending or 0
+            )
+            if need is None or villages.projected_culture(s, player, now, cfg) < need:
+                problems.append((NOT_ENOUGH_CULTURE, NOT_ENOUGH_CULTURE_TH))
     elif mission in HOSTILE_MISSIONS:
         if target is None:
             problems.append((INVALID_TARGET, NO_TARGET_VILLAGE_TH))
@@ -165,6 +184,8 @@ def send_troops(
         raise GameError(code, message)
     if mission in HOSTILE_MISSIONS and ctx.player.protection_until > now:
         ctx.player.protection_until = now
+    if mission is Mission.SETTLE:
+        villages.settle_player_culture(s, ctx.player, now, cfg)
     for t in s.scalars(
         select(Troop)
         .where(
@@ -688,8 +709,84 @@ def _resolve_reinforce_arrival(
     s.flush()
 
 
+def _resolve_settle_arrival(
+    s: Session, m: Movement, world: World, now: datetime, cfg: GameConfig
+) -> None:
+    """Resolve a settle arrival: found the new village or send the settlers back."""
+    home = villages.lock_village(s, m.from_village_id)
+    villages.settle_village(s, home, now, cfg)
+    player = s.get(Player, m.player_id)
+    villages.settle_player_culture(s, player, now, cfg)
+    tile = s.get(Tile, (world.id, m.to_x, m.to_y))
+    target = s.scalars(
+        select(Village).where(
+            Village.world_id == world.id, Village.x == m.to_x, Village.y == m.to_y
+        )
+    ).first()
+    need = villages.culture_needed_for_next_village(s, player, cfg)
+    if (
+        tile is not None
+        and tile.kind == TileKind.VALLEY.value
+        and target is None
+        and need is not None
+        and player.culture_points >= need
+    ):
+        owned = s.scalar(select(func.count(Village.id)).where(Village.player_id == player.id))
+        village = Village(
+            world_id=world.id,
+            player_id=player.id,
+            name=f"บ้านของ{player.name} {owned + 1}",
+            x=m.to_x,
+            y=m.to_y,
+            layout=tile.layout,
+            is_capital=False,
+            loyalty=100.0,
+            wood=0.0,
+            stone=0.0,
+            iron=0.0,
+            food=0.0,
+            res_updated_at=now,
+            created_at=now,
+        )
+        s.add(village)
+        s.flush()
+        s.add_all(
+            Building(village_id=village.id, slot=slot, type=btype, level=level)
+            for slot, (btype, level) in slots.initial_buildings(tile.layout, cfg).items()
+        )
+        reports.create_report(
+            s,
+            player.id,
+            "settle",
+            SETTLE_SUCCESS_TH,
+            {"village": {"id": village.id, "name": village.name, "x": village.x, "y": village.y}},
+            now,
+        )
+        m.status = "done"
+        s.flush()
+        villages.after_change(s, home, now, cfg)
+        villages.after_change(s, village, now, cfg)
+        notify.notify(s, world.id, [player.id], "village", village.id)
+        s.flush()
+        return
+    reason = (
+        "tile"
+        if tile is None or tile.kind != TileKind.VALLEY.value or target is not None
+        else "culture"
+    )
+    create_return_movement(s, m.from_village_id, m.to_x, m.to_y, m.player_id, m.units, {}, now, cfg)
+    reports.create_report(
+        s, player.id, "settle", SETTLE_FAILED_TH, {"reason": reason, "x": m.to_x, "y": m.to_y}, now
+    )
+    m.status = "done"
+    s.flush()
+    villages.after_change(s, home, now, cfg)
+    notify.notify(s, world.id, [player.id], "village", home.id)
+    s.flush()
+
+
 def resolve_arrival(s: Session, movement_id: int, now: datetime, cfg: GameConfig) -> None:
-    """Process a movement at its arrive_at: return, attack, raid, scout and reinforce."""
+    """Process a movement at its arrive_at: return, attack, raid, scout, reinforce and settle."""
     m = s.get(Movement, movement_id)
     if m is None or m.status != "moving":
         return
@@ -737,5 +834,5 @@ def resolve_arrival(s: Session, movement_id: int, now: datetime, cfg: GameConfig
         _resolve_scout_arrival(s, m, world, now, cfg)
     elif m.mission == Mission.REINFORCE.value:
         _resolve_reinforce_arrival(s, m, world, now, cfg)
-    else:
-        raise GameError(INVALID_UNITS, SETTLE_NOT_READY_TH)
+    elif m.mission == Mission.SETTLE.value:
+        _resolve_settle_arrival(s, m, world, now, cfg)

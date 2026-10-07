@@ -185,15 +185,15 @@ def test_send_scout_with_spearman(s, cfg: GameConfig, t0: datetime) -> None:
     assert exc.value.code == "INVALID_UNITS"
 
 
-def test_send_settle_not_ready(s, cfg: GameConfig, t0: datetime) -> None:
-    """The settle mission is INVALID_UNITS with the not-yet-enabled message."""
+def test_send_settle_not_enough_culture(s, cfg: GameConfig, t0: datetime) -> None:
+    """A settle send without enough culture points is NOT_ENOUGH_CULTURE."""
     _, player, bot, A, B = _world(s, cfg, t0)
     bot.protection_until = t0 - timedelta(days=1)
     _give_troops(s, A, {"settler": 3})
     with pytest.raises(GameError) as exc:
         military.send_troops(s, player.id, A.id, 30, 0, Mission.SETTLE, {"settler": 3}, t0, cfg)
-    assert exc.value.code == "INVALID_UNITS"
-    assert exc.value.message == "ยังไม่เปิดใช้"
+    assert exc.value.code == "NOT_ENOUGH_CULTURE"
+    assert exc.value.message == "แต้มวัฒนธรรมไม่พอ"
 
 
 def test_send_return_manual(s, cfg: GameConfig, t0: datetime) -> None:

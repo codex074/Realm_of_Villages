@@ -3,7 +3,7 @@
 import math
 from datetime import datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from realm.core import construction, economy, slots
@@ -115,18 +115,36 @@ def settle_village(s: Session, village: Village, now: datetime, cfg: GameConfig)
     s.flush()
 
 
-def settle_player_culture(s: Session, player: Player, now: datetime, cfg: GameConfig) -> None:
-    """Accrue culture points for all the player's villages up to now."""
-    if now <= player.cp_updated_at:
-        return
+def projected_culture(s: Session, player: Player, now: datetime, cfg: GameConfig) -> float:
+    """Culture points the player would hold at now; reads only, no writes."""
     pairs: list[tuple[str, int]] = []
     for v in s.scalars(select(Village).where(Village.player_id == player.id)).all():
         pairs.extend((b.type, b.level) for b in _building_rows(s, v.id))
     world = s.get(World, player.world_id)
-    elapsed_days = (now - player.cp_updated_at).total_seconds() / 86400
-    player.culture_points += economy.culture_per_day(pairs, world.speed, cfg) * elapsed_days
+    elapsed_days = max(0.0, (now - player.cp_updated_at).total_seconds() / 86400)
+    return player.culture_points + economy.culture_per_day(pairs, world.speed, cfg) * elapsed_days
+
+
+def settle_player_culture(s: Session, player: Player, now: datetime, cfg: GameConfig) -> None:
+    """Accrue culture points for all the player's villages up to now."""
+    if now <= player.cp_updated_at:
+        return
+    player.culture_points = projected_culture(s, player, now, cfg)
     player.cp_updated_at = now
     s.flush()
+
+
+def culture_needed_for_next_village(
+    s: Session, player: Player, cfg: GameConfig, extra_pending: int = 0
+) -> float | None:
+    """Culture points needed for the player's next village; None when at the limit."""
+    owned = (
+        s.scalar(select(func.count(Village.id)).where(Village.player_id == player.id)) or 0
+    ) + extra_pending
+    thresholds = cfg.culture.village_cp_thresholds
+    if owned >= len(thresholds):
+        return None
+    return float(thresholds[owned])
 
 
 def after_change(s: Session, village: Village, now: datetime, cfg: GameConfig) -> None:
@@ -225,6 +243,7 @@ def complete_build(s: Session, build_queue_id: int, now: datetime, cfg: GameConf
         return
     village = lock_village(s, bq.village_id)
     settle_village(s, village, now, cfg)
+    settle_player_culture(s, s.get(Player, village.player_id), now, cfg)
     row = s.scalars(
         select(Building).where(Building.village_id == village.id, Building.slot == bq.slot)
     ).first()
