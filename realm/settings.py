@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     api_port: int = 8000
     auth_required: bool = False  # Phase 3 multiplayer mode: login accounts, one player per account
     session_ttl_hours: int = 24 * 14
+    cookie_secure: bool = False  # set true when served over HTTPS so the session cookie is Secure
     rate_limit_per_10s: int = 60  # mutating API calls per account (or IP) per 10 seconds
     model_config = SettingsConfigDict(env_prefix="REALM_", env_file=".env", extra="ignore")
 

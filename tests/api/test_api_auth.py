@@ -152,3 +152,17 @@ def test_no_auth_required_default(s: Session) -> None:
     st = client.get("/api/state")
     assert st.status_code == 200
     assert st.json()["player"]["name"] == "ผู้เล่น"
+
+
+def test_cookie_secure_flag_follows_setting(s: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The session cookie is Secure only when REALM_COOKIE_SECURE is on."""
+    monkeypatch.setattr(settings, "cookie_secure", True)
+    resp = make_client(s).post(
+        "/api/auth/register", json={"username": "carol", "password": "password1"}
+    )
+    assert "Secure" in resp.headers.get("set-cookie", "")
+    monkeypatch.setattr(settings, "cookie_secure", False)
+    resp = make_client(s).post(
+        "/api/auth/register", json={"username": "dave", "password": "password1"}
+    )
+    assert "Secure" not in resp.headers.get("set-cookie", "")
