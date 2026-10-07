@@ -843,7 +843,7 @@ function plot() {
 
 // ---------- terrain ----------
 
-function drawTerrain(root, rng, fieldAnchors, fieldTypes) {
+function addDefs(root) {
   const defs = el(
     'defs',
     {},
@@ -863,6 +863,10 @@ function drawTerrain(root, rng, fieldAnchors, fieldTypes) {
   DEFS = defs;
   MADE.clear();
   root.append(defs);
+}
+
+function drawTerrain(root, rng, fieldAnchors, fieldTypes) {
+  addDefs(root);
   root.append(rect(-700, -700, W + 1400, W + 1400, 'url(#sc-grass)', { stroke: 'none' }));
   // painterly patches
   for (let i = 0; i < 26; i++) {
@@ -902,7 +906,8 @@ function drawTerrain(root, rng, fieldAnchors, fieldTypes) {
     return best;
   };
   const decor = [];
-  for (let i = 0; i < 160; i++) {
+  const townOnly = fieldAnchors.length === 0;
+  for (let i = 0; i < (townOnly ? 420 : 160); i++) {
     const x = 20 + rng() * (W - 40);
     const y = 20 + rng() * (W - 40);
     const nx = (x - CX) / (TOWN_RX + 75);
@@ -911,14 +916,15 @@ function drawTerrain(root, rng, fieldAnchors, fieldTypes) {
     if (fieldAnchors.some(([fx, fy]) => Math.hypot(fx - x, fy - y) < 78)) continue;
     if (roadPts.some(([rx, ry]) => Math.hypot(rx - x, ry - y) < 46)) continue;
     const rr = (x - CX) ** 2 / RING_RX ** 2 + (y - CY) ** 2 / RING_RY ** 2;
-    if (rr < 0.82) continue; // keep the band between moat and fields calm
-    decor.push({ x, y, kind: near(x, y), r: rng() });
+    if (!townOnly && rr < 0.82) continue; // keep the band between moat and fields calm
+    const r0 = rng();
+    decor.push({ x, y, kind: townOnly ? (r0 < 0.88 ? 'woodcutter' : 'quarry') : near(x, y), r: r0 });
   }
   decor.sort((a, b) => a.y - b.y);
   const deco = el('g', { 'pointer-events': 'none' });
   for (const d of decor) {
     const s = 0.8 + d.r * 0.5;
-    if (d.kind === 'woodcutter') deco.append(d.r > 0.25 ? pine(d.x, d.y, s) : bush(d.x, d.y, s));
+    if (d.kind === 'woodcutter') deco.append(d.r > 0.55 ? pine(d.x, d.y, s) : d.r > 0.12 ? tree(d.x, d.y, s, Math.floor(d.r * 30)) : bush(d.x, d.y, s));
     else if (d.kind === 'quarry') deco.append(rock(d.x, d.y, s * 1.2));
     else if (d.kind === 'iron_mine') deco.append(rock(d.x, d.y, s * 1.3, '#6b6f78', '#9aa0aa'));
     else {
@@ -957,9 +963,17 @@ function drawTerrain(root, rng, fieldAnchors, fieldTypes) {
 
 function drawPlaza(root) {
   const g = el('g', { 'pointer-events': 'none' });
+  const cobble = pattern('cobble', 16, 12, () => [
+    rect(0, 0, 16, 12, '#c9c3b5', { stroke: 'none' }),
+    ellipse(4, 3, 3.6, 2.4, '#d8d3c7', { stroke: '#9a958a', 'stroke-width': 0.6 }),
+    ellipse(12, 3, 3.4, 2.3, '#cfc9bc', { stroke: '#9a958a', 'stroke-width': 0.6 }),
+    ellipse(0, 9, 3.4, 2.4, '#d4cfc2', { stroke: '#9a958a', 'stroke-width': 0.6 }),
+    ellipse(8, 9, 3.6, 2.4, '#ddd8cc', { stroke: '#9a958a', 'stroke-width': 0.6 }),
+    ellipse(16, 9, 3.4, 2.4, '#d4cfc2', { stroke: '#9a958a', 'stroke-width': 0.6 }),
+  ]);
   const road = (d) => {
-    g.append(el('path', { d, fill: 'none', stroke: '#c9b07a', 'stroke-width': 46, 'stroke-linecap': 'round', opacity: 0.9 }));
-    g.append(el('path', { d, fill: 'none', stroke: '#e3cf9d', 'stroke-width': 34, 'stroke-linecap': 'round' }));
+    g.append(el('path', { d, fill: 'none', stroke: '#7d786d', 'stroke-width': 44, 'stroke-linecap': 'round', opacity: 0.85 }));
+    g.append(el('path', { d, fill: 'none', stroke: cobble, 'stroke-width': 38, 'stroke-linecap': 'round' }));
   };
   for (const a of GATE_ANGLES) {
     const r = (a * Math.PI) / 180;
@@ -967,7 +981,9 @@ function drawPlaza(root) {
     const gy = CY + (TOWN_RY - 6) * Math.sin(r);
     road(`M${CX} ${CY + 20}Q${(CX + gx) / 2 + (Math.cos(r) > 0 ? -20 : 20)} ${(CY + gy) / 2 + 20} ${gx.toFixed(0)} ${gy.toFixed(0)}`);
   }
-  g.append(ellipse(CX, CY + 20, 92, 40, '#e3cf9d', { stroke: '#c9b07a', 'stroke-width': 3 }));
+  g.append(ellipse(CX, CY + 20, 104, 48, '#8a8579', { stroke: INK, 'stroke-width': 1.4 }));
+  g.append(ellipse(CX, CY + 20, 98, 44, cobble, { stroke: 'none' }));
+  g.append(ellipse(CX, CY + 20, 40, 18, 'none', { stroke: '#9a958a', 'stroke-width': 2, 'stroke-dasharray': '5 4' }));
   root.append(g);
 }
 
@@ -1057,6 +1073,7 @@ function drawWall(level, onClick, title) {
 
 // Build the SVG scene. zoom: 'all' (fields + town) or 'town' (zoomed on the walled town).
 export function renderScene(el0, ctx, { zoom = 'all' } = {}) {
+  if (zoom === 'all') return renderLand(el0, ctx);
   const v = ctx.village;
   const bySlot = new Map(v.buildings.map((b) => [b.slot, b]));
   const queued = new Set(v.build_queue.map((q) => q.slot));
@@ -1069,11 +1086,6 @@ export function renderScene(el0, ctx, { zoom = 'all' } = {}) {
   // field anchors around the ring
   const fieldAnchors = [];
   const fieldTypes = [];
-  for (let slot = 1; slot <= 18; slot++) {
-    const a = ((FIELD_ANGLE0 + (slot - 1) * FIELD_ANGLE_STEP) * Math.PI) / 180;
-    fieldAnchors.push([CX + RING_RX * Math.cos(a), CY + RING_RY * Math.sin(a) + 24]);
-    fieldTypes.push((bySlot.get(slot) || {}).type);
-  }
 
   drawTerrain(svg, rng, fieldAnchors, fieldTypes);
 
@@ -1119,11 +1131,37 @@ export function renderScene(el0, ctx, { zoom = 'all' } = {}) {
     const [x, y] = gatePos(a);
     items.push({ kind: 'gate', x, y: y + 6, a });
   });
+  // garden trees and bushes in the free spots between buildings
+  const anchorsXY = Object.values(TOWN_POS);
+  for (let i = 0; i < 260; i++) {
+    const x = CX + (rng() - 0.5) * 2 * (TOWN_RX - 30);
+    const y = CY + (rng() - 0.5) * 2 * (TOWN_RY - 30);
+    if (((x - CX) / (TOWN_RX - 26)) ** 2 + ((y - CY) / (TOWN_RY - 26)) ** 2 > 1) continue;
+    if (anchorsXY.some(([ax, ay]) => Math.abs(ax - x) < 50 && y - ay < 18 && ay - y < 70)) continue;
+    if (((x - CX) / 120) ** 2 + ((y - CY - 20) / 62) ** 2 < 1) continue;
+    const onRoad = GATE_ANGLES.some((a) => {
+      const r = (a * Math.PI) / 180;
+      const gx = CX + TOWN_RX * Math.cos(r);
+      const gy = CY + TOWN_RY * Math.sin(r);
+      const t2 = ((x - CX) * (gx - CX) + (y - CY) * (gy - CY)) / ((gx - CX) ** 2 + (gy - CY) ** 2);
+      if (t2 < 0 || t2 > 1) return false;
+      return Math.hypot(CX + t2 * (gx - CX) - x, CY + t2 * (gy - CY) - y) < 34;
+    });
+    if (onRoad) continue;
+    if (items.some((o) => o.kind === 'tree' && Math.hypot(o.x - x, o.y - y) < 26)) continue;
+    items.push({ kind: 'tree', x, y, r: rng() });
+  }
   items.sort((p, q) => p.y - q.y);
 
   const town = el('g');
   const frontItems = el('g');
   for (const it of items) {
+    if (it.kind === 'tree') {
+      const node = it.r < 0.55 ? tree(it.x, it.y, 0.62 + it.r * 0.4, Math.floor(it.r * 10)) : it.r < 0.8 ? bush(it.x, it.y, 0.9) : pine(it.x, it.y, 0.6);
+      node.setAttribute('pointer-events', 'none');
+      (it.y > CY + 60 ? frontItems : town).append(node);
+      continue;
+    }
     if (it.kind === 'gate') {
       const target = Math.sin((it.a * Math.PI) / 180) < 0 ? town : frontItems;
       const br = bridge(it.a);
@@ -1160,7 +1198,7 @@ export function renderScene(el0, ctx, { zoom = 'all' } = {}) {
   return svg;
 }
 
-const BOXES = { all: [0, -70, 1000, 1150], town: [175, 160, 650, 660] };
+const BOXES = { all: [0, 0, 1000, 760], town: [150, 150, 700, 700] };
 const savedView = {};
 
 // The full-screen frame around the scene: fits the whole picture to the screen, drag to pan, wheel/pinch to zoom.
@@ -1304,4 +1342,289 @@ export function sceneFrame(el0, ctx, zoom) {
   apply();
   new ResizeObserver(apply).observe(frame);
   return frame;
+}
+
+// ---------- resource landscape (village page): fields as terrain zones around a small walled village ----------
+
+const LW = 1000;
+const LH = 760;
+const LCX = 500;
+const LCY = 385;
+
+// A round deciduous tree (three-lobed canopy with a lit side).
+function tree(x, y, s = 1, hue = 0) {
+  const greens = [['#4f8f3a', '#6fb04e', '#2f6a2a'], ['#5a9a3e', '#82bf5a', '#376f2c'], ['#467f36', '#62a147', '#2a5c25']][hue % 3];
+  const g = el('g', { transform: `translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${s.toFixed(2)})` });
+  g.append(shadow(6, 2, 15, 5));
+  g.append(rect(-2.5, -10, 5, 11, C.woodD, { 'stroke-width': 0.9 }));
+  g.append(el('circle', { cx: -7, cy: -17, r: 10, fill: greens[0], stroke: INK, 'stroke-width': 1.1 }));
+  g.append(el('circle', { cx: 7, cy: -16, r: 10, fill: greens[2], stroke: INK, 'stroke-width': 1.1 }));
+  g.append(el('circle', { cx: 0, cy: -26, r: 11, fill: greens[0], stroke: INK, 'stroke-width': 1.1 }));
+  g.append(el('circle', { cx: -4, cy: -29, r: 5.5, fill: greens[1], opacity: 0.9 }));
+  g.append(el('circle', { cx: -10, cy: -19, r: 4, fill: greens[1], opacity: 0.8 }));
+  return g;
+}
+
+// A rocky mountain with a shaded right face and a snow cap.
+function mountain(x, y, s = 1, snow = true) {
+  const g = el('g', { transform: `translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${s.toFixed(2)})` });
+  g.append(shadow(14, 2, 54, 9));
+  g.append(poly([[-48, 0], [-16, -52], [-4, -40], [8, -72], [50, 0]], '#9a9fa8'));
+  g.append(poly([[8, -72], [50, 0], [12, 0], [2, -30]], '#5f6570', { 'stroke-width': 0 }));
+  g.append(poly([[-16, -52], [-4, -40], [-12, -20], [-26, -30]], '#c3c7ce', { 'stroke-width': 0 }));
+  g.append(line(-30, -18, -14, -10, '#6b717a', 1.2));
+  g.append(line(16, -36, 24, -20, '#454a52', 1.2));
+  if (snow) {
+    g.append(poly([[8, -72], [19, -50], [12, -54], [6, -46], [0, -54], [-3, -52]], '#f6f8fb', { 'stroke-width': 1 }));
+    g.append(poly([[-16, -52], [-9, -44], [-14, -42], [-20, -45]], '#f6f8fb', { 'stroke-width': 0.9 }));
+  }
+  g.append(poly([[-48, 0], [-16, -52], [-4, -40], [8, -72], [50, 0]], 'none', { 'stroke-width': 1.5 }));
+  return g;
+}
+
+function blobPath(cx, cy, rx, ry, rng, n = 10, wobble = 0.18) {
+  const pts0 = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    const k = 1 + (rng() - 0.5) * 2 * wobble;
+    pts0.push([cx + Math.cos(a) * rx * k, cy + Math.sin(a) * ry * k]);
+  }
+  let d = '';
+  for (let i = 0; i < n; i++) {
+    const p = pts0[i];
+    const q = pts0[(i + 1) % n];
+    const m = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+    d += i === 0 ? `M${m[0].toFixed(1)} ${m[1].toFixed(1)}` : '';
+    const nx = pts0[(i + 1) % n];
+    const mm = [(nx[0] + pts0[(i + 2) % n][0]) / 2, (nx[1] + pts0[(i + 2) % n][1]) / 2];
+    d += `Q${nx[0].toFixed(1)} ${nx[1].toFixed(1)} ${mm[0].toFixed(1)} ${mm[1].toFixed(1)}`;
+  }
+  return d + 'Z';
+}
+
+function lake(cx, cy, rx, ry, rng) {
+  const g = el('g', { 'pointer-events': 'none' });
+  g.append(el('path', { d: blobPath(cx, cy, rx + 9, ry + 7, rng, 9, 0.12), fill: '#cdb985', stroke: INK, 'stroke-width': 1.3 }));
+  g.append(el('path', { d: blobPath(cx, cy, rx, ry, rng, 9, 0.12), fill: 'url(#sc-water)', stroke: '#3f7fa6', 'stroke-width': 1.4 }));
+  for (let i = 0; i < 4; i++) {
+    const yy = cy - ry * 0.4 + i * ry * 0.28;
+    g.append(el('path', { d: `M${cx - rx * 0.45 + i * 6} ${yy}q8 -4 16 0t16 0`, fill: 'none', stroke: '#e9f6fb', 'stroke-width': 1.6, opacity: 0.8 }));
+  }
+  return g;
+}
+
+// ---- field zones ----
+
+function zoneGround(rng, rx, ry, fill, edge) {
+  return el('path', { d: blobPath(0, 0, rx, ry, rng, 10, 0.16), fill, stroke: edge, 'stroke-width': 1.6 });
+}
+
+const ZONES = {
+  farm(level, rng) {
+    const g = el('g');
+    g.append(shadow(4, 6, 62, 34));
+    g.append(zoneGround(rng, 60, 34, '#e8c255', '#9b7424'));
+    g.append(el('path', { d: blobPath(0, 0, 52, 28, rng, 10, 0.1), fill: '#f2d36c', stroke: 'none', opacity: 0.8 }));
+    for (let i = -3; i <= 3; i++) {
+      g.append(el('path', { d: `M${-48 + Math.abs(i) * 4} ${i * 7}q48 ${i % 2 ? -5 : 5} ${96 - Math.abs(i) * 8} 0`, fill: 'none', stroke: '#b98d2c', 'stroke-width': 1.3, opacity: 0.8 }));
+      for (let k = 0; k < 11; k++) {
+        const x = -42 + Math.abs(i) * 4 + k * (84 - Math.abs(i) * 8) / 10;
+        g.append(line(x, i * 7 - 1, x + 0.8, i * 7 - 5, k % 3 ? '#fff0a0' : '#c9962c', 1.3));
+      }
+    }
+    const bales = Math.min(4, Math.ceil(level / 3));
+    for (let i = 0; i < bales; i++) g.append(hayBale(-30 + i * 18, 22 - (i % 2) * 6, 0.62));
+    if (level >= 5) g.append(hall({ w: 26, d: 18, h: 13, rh: 10, wall: '#d9a07a', wins: 0, door: true, x: 40, y: 4, planks: true }));
+    return g;
+  },
+  woodcutter(level, rng) {
+    const g = el('g');
+    g.append(zoneGround(rng, 58, 36, '#4d8a37', '#2e5a24'));
+    const spots = [];
+    for (let i = 0; i < 16; i++) spots.push([(rng() - 0.5) * 96, (rng() - 0.5) * 52]);
+    spots.sort((a, b) => a[1] - b[1]);
+    const hutAt = level >= 1 ? [16, 16] : null;
+    spots.forEach(([x, y], i) => {
+      if (hutAt && Math.hypot(x - hutAt[0], y - hutAt[1]) < 22) return;
+      g.append(i % 4 === 0 ? pine(x, y + 8, 0.65) : tree(x, y + 10, 0.72, i));
+    });
+    if (hutAt) {
+      g.append(hall({ w: 24, d: 16, h: 12, rh: 9, wall: C.woodL, roof: '#6f4a2a', roofTex: 'thatch', wins: 0, door: true, x: hutAt[0], y: hutAt[1] + 8, planks: true }));
+      if (level >= 3) g.append(el('g', { transform: `translate(${hutAt[0] + 26} ${hutAt[1] + 12}) scale(0.55)` }, logPile(0, 0, Math.min(4, 2 + Math.floor(level / 5)))));
+    }
+    return g;
+  },
+  quarry(level, rng) {
+    const g = el('g');
+    g.append(zoneGround(rng, 58, 34, '#a76a3e', '#6b3f22'));
+    const tiers = ['#b97a48', '#9d6036', '#874f2c', '#6e3f22'];
+    tiers.forEach((c, i) => {
+      g.append(el('path', { d: blobPath(4 * i, 3 * i, 46 - i * 10, 26 - i * 6, rng, 9, 0.1), fill: c, stroke: '#4f2d17', 'stroke-width': 1.1 }));
+      g.append(el('path', { d: `M${-40 + i * 10} ${-4 + i * 4}q${40 - i * 8} -8 ${80 - i * 18} 0`, fill: 'none', stroke: '#d7a06a', 'stroke-width': 1.4, opacity: 0.6 }));
+    });
+    const n = 1 + Math.min(4, Math.floor(level / 2));
+    for (let i = 0; i < n; i++) g.append(block(-36 + i * 13, 26 - (i % 2) * 5, 9, 8, 7, '#c9a27a'));
+    if (level >= 4) {
+      g.append(line(36, 22, 36, -8, C.woodD, 2.6));
+      g.append(line(36, -8, 22, -2, C.woodD, 2.2));
+    }
+    return g;
+  },
+  iron_mine(level, rng) {
+    const g = el('g');
+    g.append(zoneGround(rng, 58, 32, '#8e8f86', '#565851'));
+    g.append(mountain(-26, 14, 0.62, true));
+    g.append(mountain(22, 18, 0.74, true));
+    if (level >= 1) {
+      g.append(el('path', { d: 'M8 24v-12a9 9 0 0 1 18 0v12z', fill: '#17110b', stroke: INK, 'stroke-width': 1.2 }));
+      g.append(rect(5, 6, 3, 18, C.wood, { 'stroke-width': 0.7 }));
+      g.append(rect(26, 6, 3, 18, C.wood, { 'stroke-width': 0.7 }));
+      g.append(rect(4, 4, 26, 3.5, C.woodD, { 'stroke-width': 0.7 }));
+    }
+    if (level >= 3) {
+      const cart = el('g', { transform: 'translate(-8 30) scale(0.6)' });
+      cart.append(poly([[-14, -14], [14, -14], [10, 0], [-10, 0]], '#6b4a2a'));
+      cart.append(poly([[-10, -14], [-4, -22], [4, -20], [10, -14]], '#8aa0bd'));
+      cart.append(el('circle', { cx: -7, cy: 1, r: 3.6, fill: '#4a4f57', stroke: INK }));
+      cart.append(el('circle', { cx: 7, cy: 1, r: 3.6, fill: '#4a4f57', stroke: INK }));
+      g.append(cart);
+    }
+    return g;
+  },
+};
+
+// The small walled village in the middle of the landscape; tapping it opens the village centre.
+function villageCore(ctx, bySlot) {
+  const g = el('g', { class: 'hit', style: 'cursor:pointer', transform: `translate(${LCX} ${LCY}) scale(1.25)` });
+  g.append(el('title', {}, 'ใจกลางหมู่บ้าน'));
+  g.append(shadow(6, 10, 96, 60));
+  g.append(el('ellipse', { cx: 0, cy: 0, rx: 92, ry: 62, fill: '#7fb6d6', stroke: '#3f7fa6', 'stroke-width': 2 }));
+  g.append(el('ellipse', { cx: 0, cy: -2, rx: 80, ry: 53, fill: '#9ccb62', stroke: INK, 'stroke-width': 1.4 }));
+  const wallLvl = (bySlot.get(40) || {}).level || 0;
+  const wallFill = wallTexture('stone', '#ddd3b8');
+  if (wallLvl > 0) {
+    g.append(el('ellipse', { cx: 0, cy: -2, rx: 80, ry: 53, fill: 'none', stroke: INK, 'stroke-width': 9 }));
+    g.append(el('ellipse', { cx: 0, cy: -2, rx: 80, ry: 53, fill: 'none', stroke: wallFill, 'stroke-width': 7 }));
+    g.append(el('ellipse', { cx: 0, cy: -5, rx: 80, ry: 53, fill: 'none', stroke: '#b5543a', 'stroke-width': 2.4 }));
+  } else {
+    for (let i = 0; i < 40; i++) {
+      const a = (i / 40) * Math.PI * 2;
+      const x = 80 * Math.cos(a);
+      const y = -2 + 53 * Math.sin(a);
+      g.append(line(x, y, x, y - 7, C.woodD, 2.4));
+    }
+  }
+  g.append(el('ellipse', { cx: 0, cy: 4, rx: 20, ry: 11, fill: '#cfc8b8', stroke: '#9a958a', 'stroke-width': 1.2 }));
+  // a few roofs standing for the buildings that exist
+  const built = [];
+  for (let s = 19; s <= 38; s++) {
+    const b = bySlot.get(s);
+    if (b && b.type && b.level > 0) built.push(b);
+  }
+  const spots = [[-46, -14], [-18, -30], [16, -30], [46, -14], [-56, 12], [56, 12], [-30, 28], [30, 28], [0, -36], [-40, -30], [40, -30], [0, 34]];
+  const show = Math.max(3, Math.min(spots.length, built.length));
+  spots
+    .slice(0, show)
+    .sort((a, b) => a[1] - b[1])
+    .forEach(([x, y], i) => {
+      g.append(el('g', { transform: `translate(${x} ${y + 8}) scale(0.32)` }, hall({ w: 60, d: 44, h: 30, rh: 22, roof: i % 3 === 1 ? '#7f8f9c' : '#b5543a', roofTex: i % 3 === 1 ? 'slate' : 'tile', wins: 1, timber: i % 2 === 0 })));
+    });
+  g.append(flag(0, 2, 34));
+  g.append(el('g', { transform: 'translate(0 70)' }, rect(-56, -11, 112, 22, C.cream, { rx: 11, stroke: C.plank || '#6b4a2b', 'stroke-width': 2 }), text(0, 6, 'ใจกลางหมู่บ้าน', 14, INK)));
+  g.addEventListener('click', () => ctx.navigate(`#/v/${ctx.villageId}/center`));
+  return g;
+}
+
+// The village page: 18 fields as terrain zones around the walled village, with forests, mountains and lakes.
+function renderLand(el0, ctx) {
+  const v = ctx.village;
+  const bySlot = new Map(v.buildings.map((b) => [b.slot, b]));
+  const queued = new Set(v.build_queue.map((q) => q.slot));
+  const rng = mulberry32((v.village.id || 1) * 104729);
+  const svg = el('svg', { class: 'scene scene-all', viewBox: `0 0 ${LW} ${LH}`, preserveAspectRatio: 'xMidYMid meet' });
+  addDefs(svg);
+  svg.append(rect(-800, -800, LW + 1600, LH + 1600, 'url(#sc-grass)', { stroke: 'none' }));
+  for (let i = 0; i < 40; i++) {
+    svg.append(ellipse(rng() * LW, rng() * LH, 40 + rng() * 110, 20 + rng() * 50, rng() > 0.5 ? '#b3d97d' : '#5d8f3c', { opacity: 0.15, stroke: 'none' }));
+  }
+
+  // field anchors: one organic ring, same-type slots stay together
+  const anchors = [];
+  for (let slot = 1; slot <= 18; slot++) {
+    const a = ((-160 + (slot - 1) * 20) * Math.PI) / 180;
+    const wob = slot % 2 ? 1.0 : 0.8;
+    anchors.push({ slot, x: LCX + 310 * wob * Math.cos(a), y: LCY + 232 * wob * Math.sin(a) + 6 });
+  }
+
+  // paths: a ring road around the fields, one around the village, and four roads to the edge
+  const paths = el('g', { fill: 'none', 'stroke-linecap': 'round', 'pointer-events': 'none' });
+  const road = (d, w) => {
+    paths.append(el('path', { d, stroke: '#8a6d42', 'stroke-width': w + 4, opacity: 0.45 }));
+    paths.append(el('path', { d, stroke: '#d9c08a', 'stroke-width': w }));
+  };
+  road(`M${LCX - 395} ${LCY}a395 300 0 1 0 790 0a395 300 0 1 0 -790 0`, 7);
+  road(`M${LCX - 140} ${LCY}a140 100 0 1 0 280 0a140 100 0 1 0 -280 0`, 6);
+  for (const a of [-140, -40, 40, 140]) {
+    const r = (a * Math.PI) / 180;
+    road(`M${LCX + 92 * Math.cos(r)} ${LCY + 62 * Math.sin(r)}Q${LCX + 260 * Math.cos(r) + 20} ${LCY + 210 * Math.sin(r)} ${LCX + 640 * Math.cos(r)} ${LCY + 470 * Math.sin(r)}`, 8);
+  }
+  svg.append(paths);
+
+  // lakes and a river
+  const lakes = [[110, 640, 70, 38], [880, 600, 62, 34], [820, 70, 52, 26], [330, -150, 80, 36], [640, 900, 74, 34]];
+  svg.append(el('path', { d: `M${lakes[2][0] - 40} ${lakes[2][1] + 10}C760 180 960 260 940 380S860 520 ${lakes[1][0]} ${lakes[1][1] - 20}`, fill: 'none', stroke: '#3f7fa6', 'stroke-width': 14, 'stroke-linecap': 'round', 'pointer-events': 'none' }));
+  svg.append(el('path', { d: `M${lakes[2][0] - 40} ${lakes[2][1] + 10}C760 180 960 260 940 380S860 520 ${lakes[1][0]} ${lakes[1][1] - 20}`, fill: 'none', stroke: '#8fc8e4', 'stroke-width': 10, 'stroke-linecap': 'round', 'pointer-events': 'none' }));
+  svg.append(el('path', { d: `M30 420C90 470 70 560 ${lakes[0][0]} ${lakes[0][1] - 30}`, fill: 'none', stroke: '#3f7fa6', 'stroke-width': 12, 'stroke-linecap': 'round', 'pointer-events': 'none' }));
+  svg.append(el('path', { d: `M30 420C90 470 70 560 ${lakes[0][0]} ${lakes[0][1] - 30}`, fill: 'none', stroke: '#8fc8e4', 'stroke-width': 8, 'stroke-linecap': 'round', 'pointer-events': 'none' }));
+  for (const [x, y, rx, ry] of lakes) svg.append(lake(x, y, rx, ry, rng));
+
+  // scenery outside the field ring: forests, mountain ranges at the corners
+  const decor = [];
+  const mounts = [[70, 90, 1.3], [150, 60, 1.0], [930, 200, 1.2], [90, 300, 0.9], [640, 720, 1.0], [300, 740, 1.1], [960, 700, 0.9], [560, 40, 0.8], [200, -120, 1.4], [760, -90, 1.2], [480, -200, 1.0], [120, 900, 1.3], [820, 920, 1.4], [460, 960, 1.0]];
+  for (const [x, y, s] of mounts) decor.push({ y, node: mountain(x, y, s) });
+  for (let i = 0; i < 1000; i++) {
+    const x = -60 + rng() * (LW + 120);
+    const y = -300 + rng() * (LH + 600);
+    const nx = (x - LCX) / 405;
+    const ny = (y - LCY) / 310;
+    if (nx * nx + ny * ny < 1) continue;
+    if (lakes.some(([lx, ly, rx, ry]) => ((x - lx) / (rx + 16)) ** 2 + ((y - ly) / (ry + 14)) ** 2 < 1)) continue;
+    if (mounts.some(([mx, my, s]) => Math.abs(x - mx) < 46 * s && y < my + 6 && y > my - 70 * s)) continue;
+    // clustered forests: keep trees where a low-frequency noise is high
+    const noise = Math.sin(x * 0.013 + 1.3) * Math.cos(y * 0.017 - 0.4) + Math.sin((x + y) * 0.007);
+    if (noise < 0.15) continue;
+    const r = rng();
+    decor.push({ y, node: r < 0.35 ? pine(x, y, 0.7 + r) : tree(x, y, 0.7 + r * 0.6, i) });
+  }
+  decor.sort((a, b) => a.y - b.y);
+  const deco = el('g', { 'pointer-events': 'none' });
+  for (const d of decor) deco.append(d.node);
+  svg.append(deco);
+
+  // fields + village core in painter's order
+  const open = (slot) => () => openSlotPanel(el0, ctx, slot);
+  const badges = el('g');
+  const items = anchors.map((a) => ({ ...a, kind: 'field' }));
+  items.push({ kind: 'core', y: LCY });
+  items.sort((p, q) => p.y - q.y);
+  for (const it of items) {
+    if (it.kind === 'core') {
+      svg.append(villageCore(ctx, bySlot));
+      continue;
+    }
+    const b = bySlot.get(it.slot);
+    if (!b || !b.type) continue;
+    const g = el('g', { class: 'hit', style: 'cursor:pointer', transform: `translate(${it.x.toFixed(1)} ${it.y.toFixed(1)})` });
+    g.append(el('title', {}, `${b.name_th} เลเวล ${b.level}`));
+    const zr = mulberry32((v.village.id || 1) * 31 + it.slot * 977);
+    const inner = el('g', { transform: `scale(${(1.3 + Math.min(b.level, 15) * 0.012).toFixed(3)})`, opacity: b.level === 0 ? 0.62 : 1 });
+    inner.append((ZONES[b.type] || ZONES.farm)(b.level, zr));
+    g.append(inner);
+    if (queued.has(it.slot)) g.append(el('g', { transform: 'scale(0.7)' }, scaffolding()));
+    badges.append(placed(badge(0, 0, b.level), it.x, it.y - 4, it.slot, open));
+    g.addEventListener('click', open(it.slot));
+    svg.append(g);
+  }
+  svg.append(badges);
+  return svg;
 }
