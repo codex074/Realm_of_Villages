@@ -57,6 +57,9 @@ class Player(Base):
     protection_until: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     capital_village_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    account_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("accounts.id"), nullable=True, index=True
+    )
 
 
 class BotProfile(Base):
@@ -245,3 +248,92 @@ class UnitUpgrade(Base):
     level: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     upgrading_to: Mapped[int | None] = mapped_column(Integer, nullable=True)
     finishes_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class Account(Base):
+    """A login account (Phase 3); the first account created is the admin."""
+
+    __tablename__ = "accounts"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    password_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class AuthSession(Base):
+    """A login session; only the SHA-256 of the cookie token is stored."""
+
+    __tablename__ = "sessions"
+
+    token_hash: Mapped[str] = mapped_column(Text, primary_key=True)
+    account_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("accounts.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class Alliance(Base):
+    """A player alliance inside one world."""
+
+    __tablename__ = "alliances"
+    __table_args__ = (UniqueConstraint("world_id", "name", name="uq_alliances_world_id_name"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    world_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("worlds.id"), nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    leader_player_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class AllianceMember(Base):
+    """Membership of a player in an alliance (a player belongs to at most one)."""
+
+    __tablename__ = "alliance_members"
+
+    player_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("players.id"), primary_key=True)
+    alliance_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("alliances.id"), nullable=False, index=True
+    )
+    role: Mapped[str] = mapped_column(Text, nullable=False, server_default="member")
+    joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class AllianceInvite(Base):
+    """A pending invitation of a player to an alliance."""
+
+    __tablename__ = "alliance_invites"
+
+    alliance_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("alliances.id"), primary_key=True
+    )
+    player_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("players.id"), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class AllianceMessage(Base):
+    """One chat message of an alliance."""
+
+    __tablename__ = "alliance_messages"
+    __table_args__ = (Index("ix_alliance_messages_alliance_id_id", "alliance_id", "id"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    alliance_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("alliances.id"), nullable=False)
+    player_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("players.id"), nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class AuditLog(Base):
+    """Audit trail of state-changing API calls (for cheat investigation)."""
+
+    __tablename__ = "audit_log"
+    __table_args__ = (Index("ix_audit_log_created_at", "created_at"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    account_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    player_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    method: Mapped[str] = mapped_column(Text, nullable=False)
+    path: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
