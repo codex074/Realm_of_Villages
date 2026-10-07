@@ -505,3 +505,92 @@ body {
   #clock { display: none; }
   .res { font-size: 12px; }
 }
+
+/* map + rally */
+
+.map-canvas {
+  width: 100%;
+  max-width: 600px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  touch-action: none;
+  cursor: grab;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.map-canvas:active {
+  cursor: grabbing;
+}
+
+.map-wrap {
+  margin-bottom: 12px;
+}
+
+.map-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.map-arrows {
+  display: flex;
+  gap: 6px;
+}
+
+.map-coords {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.map-coords input {
+  width: 64px;
+  font: inherit;
+  font-size: 14px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.unit-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.unit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.unit-row span {
+  flex: 1;
+  font-size: 14px;
+}
+
+.unit-row input {
+  width: 64px;
+  font: inherit;
+  font-size: 14px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.rally-form select,
+.rally-form input[type='number'] {
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
