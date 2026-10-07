@@ -49,15 +49,14 @@ services:
         condition: service_completed_successfully
     restart: unless-stopped
 
-  # bots arrives in Phase 1:
-  # bots:
-  #   <<: *realm-app
-  #   command: ["realm", "bots"]
-  #   env_file: .env
-  #   depends_on:
-  #     migrate:
-  #       condition: service_completed_successfully
-  #   restart: unless-stopped
+  bots:
+    <<: *realm-app
+    command: ["realm", "bots"]
+    env_file: .env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
 
   caddy:
     image: caddy:2

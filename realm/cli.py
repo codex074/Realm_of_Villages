@@ -81,7 +81,10 @@ def engine() -> None:
 @app.command()
 def bots() -> None:
     """Run the bot worker."""
-    _todo()
+    from realm.bot.worker import run_forever
+    from realm.core.config import load_config
+
+    run_forever(load_config())
 
 
 @app.command()
