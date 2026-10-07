@@ -100,14 +100,14 @@ function shadow(cx, cy, rx, ry) {
 }
 
 // A window with frame, glass, muntins, optional shutters and flower box.
-function windowAt(x, y, { w = 10, h = 12, shutters = null, flowers = false } = {}) {
+function windowAt(x, y, { w = 10, h = 12, shutters = null, flowers = false, lit = false } = {}) {
   const g = el('g', { transform: `translate(${x} ${y})` });
   if (shutters) {
     g.append(rect(-w / 2 - 5, 0, 4.5, h, shutters, { 'stroke-width': 1 }));
     g.append(rect(w / 2 + 0.5, 0, 4.5, h, shutters, { 'stroke-width': 1 }));
   }
   g.append(rect(-w / 2 - 1.5, -1.5, w + 3, h + 3, C.cream, { 'stroke-width': 1.1 }));
-  g.append(rect(-w / 2, 0, w, h, 'url(#sc-glass)', { 'stroke-width': 0.8 }));
+  g.append(rect(-w / 2, 0, w, h, lit ? '#ffd27a' : 'url(#sc-glass)', { 'stroke-width': 0.8 }));
   g.append(line(0, 0, 0, h, C.cream, 1.1));
   g.append(line(-w / 2, h / 2, w / 2, h / 2, C.cream, 1.1));
   g.append(rect(-w / 2 - 2.5, h + 1.5, w + 5, 2.6, C.stoneL, { 'stroke-width': 0.9 }));
@@ -129,74 +129,243 @@ function doorAt(x, { w = 16, h = 24 } = {}) {
   return g;
 }
 
-// A gabled house seen from the front-right: front wall, right side wall with gable, tiled front roof slope.
-function hall({ w = 70, d = 44, h = 34, rh = 22, wall = C.wall, wallD = C.wallD, roof = C.roof, roofL = C.roofL, roofD = C.roofD, door = true, wins = 2, x = 0, y = 0, timber = false, planks = false, chimney = false, shutter = '#5f8a5a', flowers = false, base = C.stoneD }) {
-  const dx = d * 0.62;
-  const dy = -d * 0.34;
-  const g = el('g', { transform: `translate(${x} ${y})` });
-  g.append(shadow(dx / 2, 4, w / 2 + dx / 2 + 6, 8));
-  // right wall
-  g.append(poly([[w / 2, 0], [w / 2 + dx, dy], [w / 2 + dx, dy - h], [w / 2, -h]], wallD));
-  g.append(poly([[w / 2, 0], [w / 2 + dx, dy], [w / 2 + dx, dy - 5], [w / 2, -5]], base, { 'stroke-width': 0.8 }));
-  g.append(poly([[w / 2, -h], [w / 2 + dx, dy - h], [w / 2 + dx, dy - h + 6], [w / 2, -h + 6]], '#000', { opacity: 0.12, 'stroke-width': 0 }));
-  // front wall
-  g.append(rect(-w / 2, -h, w, h, wall));
-  g.append(rect(-w / 2, -h, w, h, 'url(#sc-shade)', { stroke: 'none' }));
-  g.append(rect(-w / 2, -5, w, 5, base, { 'stroke-width': 0.9 }));
-  for (let sx = -w / 2 + 6; sx < w / 2 - 3; sx += 11) g.append(line(sx, -5, sx, 0, INK, 0.7, { opacity: 0.55 }));
-  if (planks) {
-    for (let sx = -w / 2 + 7; sx < w / 2; sx += 7) g.append(line(sx, -h + 1, sx, -5, wallD, 1, { opacity: 0.8 }));
+// ---- textured, isometric houses ----
+
+const AX = 0.9; // horizontal run of the iso axes per unit of length
+const AY = 0.38; // vertical rise
+let DEFS = null;
+const MADE = new Set();
+
+// Create (once per scene) a pattern in <defs> and return its url().
+function pattern(key, w, h, build) {
+  const id = 'px-' + key.replace(/[^a-z0-9]/gi, '');
+  if (!MADE.has(id) && DEFS) {
+    MADE.add(id);
+    DEFS.append(el('pattern', { id, width: w, height: h, patternUnits: 'userSpaceOnUse' }, build()));
   }
+  return `url(#${id})`;
+}
+
+function shade(hex, k) {
+  const n = parseInt(hex.slice(1), 16);
+  const f = (v) => Math.max(0, Math.min(255, Math.round(v * k)));
+  return `#${[(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => f(v).toString(16).padStart(2, '0')).join('')}`;
+}
+
+function wallTexture(kind, color) {
+  if (kind === 'stone') {
+    return pattern(`stone${color}`, 30, 18, () => [
+      rect(0, 0, 30, 18, color, { stroke: 'none' }),
+      ...[0, 1].map((r) => [0, 1, 2].map((c) => rect(c * 15 - (r ? 7 : 0) + 0.4, r * 9 + 0.4, 14.2, 8.2, shade(color, 0.96 + ((c + r * 2) % 3) * 0.04), { stroke: shade(color, 0.6), 'stroke-width': 0.7, rx: 1.4 }))).flat(),
+    ]);
+  }
+  if (kind === 'plank') {
+    return pattern(`plank${color}`, 9, 34, () => [
+      rect(0, 0, 9, 34, color, { stroke: 'none' }),
+      line(0.3, 0, 0.3, 34, shade(color, 0.6), 1),
+      line(4.8, 4, 4.8, 30, shade(color, 0.86), 0.6, { opacity: 0.8 }),
+      ellipse(5.5, 13, 1.1, 1.8, shade(color, 0.7), { stroke: 'none', opacity: 0.8 }),
+    ]);
+  }
+  return pattern(`plaster${color}`, 26, 22, () => [
+    rect(0, 0, 26, 22, color, { stroke: 'none' }),
+    el('circle', { cx: 5, cy: 6, r: 0.8, fill: shade(color, 0.86), opacity: 0.7 }),
+    el('circle', { cx: 18, cy: 14, r: 0.9, fill: shade(color, 0.88), opacity: 0.7 }),
+    el('circle', { cx: 12, cy: 18, r: 0.6, fill: '#fff', opacity: 0.5 }),
+    el('circle', { cx: 22, cy: 4, r: 0.6, fill: '#fff', opacity: 0.45 }),
+    line(0, 11, 26, 11, shade(color, 0.93), 0.6, { opacity: 0.5 }),
+  ]);
+}
+
+function roofTexture(kind, color) {
+  const dark = shade(color, 0.62);
+  const light = shade(color, 1.18);
+  if (kind === 'slate') {
+    return pattern(`slate${color}`, 16, 10, () => [
+      rect(0, 0, 16, 10, color, { stroke: 'none' }),
+      rect(0.4, 0.4, 15.2, 4.2, shade(color, 1.06), { stroke: dark, 'stroke-width': 0.7 }),
+      rect(-7.6, 5.4, 15.2, 4.2, shade(color, 0.94), { stroke: dark, 'stroke-width': 0.7 }),
+      rect(8.4, 5.4, 15.2, 4.2, shade(color, 0.94), { stroke: dark, 'stroke-width': 0.7 }),
+    ]);
+  }
+  if (kind === 'thatch') {
+    return pattern(`thatch${color}`, 10, 12, () => [
+      rect(0, 0, 10, 12, color, { stroke: 'none' }),
+      ...[1, 3.5, 6, 8.5].map((x, i) => line(x, 0, x + 1.2, 12, i % 2 ? dark : light, 0.9, { opacity: 0.8 })),
+      line(0, 11.5, 10, 11.5, dark, 1.2, { opacity: 0.6 }),
+    ]);
+  }
+  return pattern(`tile${color}`, 14, 9, () => [
+    rect(0, 0, 14, 9, color, { stroke: 'none' }),
+    el('path', { d: 'M0 4.5a7 4.5 0 0 0 14 0V0H0z', fill: shade(color, 1.07), stroke: dark, 'stroke-width': 0.8 }),
+    el('path', { d: 'M-7 9a7 4.5 0 0 0 14 0V4.5h-14z', fill: color, stroke: dark, 'stroke-width': 0.8 }),
+    el('path', { d: 'M7 9a7 4.5 0 0 0 14 0V4.5H7z', fill: color, stroke: dark, 'stroke-width': 0.8 }),
+    el('path', { d: 'M2 2.6q5 2.2 10 0', fill: 'none', stroke: light, 'stroke-width': 0.8, opacity: 0.7 }),
+  ]);
+}
+
+let CLIP_N = 0;
+
+// An isometric house: two textured walls, a lit/shaded gable or hip roof, windows, door, chimney.
+function house({ w = 60, d = 40, h = 30, rh = 22, wall = C.wall, roof = C.roof, tex = 'plaster', roofTex = 'tile', door = true, wins = 2, x = 0, y = 0, timber = false, chimney = false, shutter = '#5f8a5a', flowers = false, lit = false, base = '#8d887c', barn = null, pilasters = false }) {
+  const Lx = -AX * w;
+  const Ly = -AY * w;
+  const Rx = AX * d;
+  const Ry = -AY * d;
+  const g = el('g', { transform: `translate(${(x - (Lx + Rx) / 2).toFixed(1)} ${y})` });
+  const P0 = [0, 0];
+  const PL = [Lx, Ly];
+  const PR = [Rx, Ry];
+  const PB = [Lx + Rx, Ly + Ry];
+  const up = (p, k) => [p[0], p[1] - k];
+
+  // cast shadow (light from the upper left) + ground contact
+  g.append(poly([P0, PL, PB, PR].map(([px, py]) => [px + h * 0.5 + 6, py + h * 0.14 + 3]), '#1d1408', { opacity: 0.26, stroke: 'none' }));
+  g.append(poly([[-4, 3], [Lx - 4, Ly + 3], [PB[0], PB[1] + 3], [Rx + 4, Ry + 3]], '#1d1408', { opacity: 0.2, stroke: 'none' }));
+
+  const faceL = el('g', { transform: `matrix(${-AX} ${-AY} 0 1 0 0)` });
+  const faceR = el('g', { transform: `matrix(${AX} ${-AY} 0 1 0 0)` });
+  const wallFill = wallTexture(tex === 'timber' ? 'plaster' : tex, wall);
+  const baseFill = wallTexture('stone', base);
+  // left wall (lit)
+  faceL.append(rect(0, -h, w, h, wallFill, { stroke: 'none' }));
+  faceL.append(rect(0, -h, w, h, 'url(#sc-ao)', { stroke: 'none' }));
+  faceL.append(rect(0, -5, w, 5, baseFill, { stroke: INK, 'stroke-width': 0.7 }));
+  // right wall (shaded)
+  faceR.append(rect(0, -h, d, h, wallFill, { stroke: 'none' }));
+  faceR.append(rect(0, -h, d, h, '#2a1a0c', { opacity: 0.3, stroke: 'none' }));
+  faceR.append(rect(0, -h, d, h, 'url(#sc-ao)', { stroke: 'none' }));
+  faceR.append(rect(0, -5, d, 5, baseFill, { stroke: INK, 'stroke-width': 0.7 }));
+  faceR.append(rect(0, -5, d, 5, '#2a1a0c', { opacity: 0.3, stroke: 'none' }));
   if (timber) {
-    const beam = C.woodD;
-    for (const f of [0, 1 / 3, 2 / 3, 1]) g.append(rect(-w / 2 + f * (w - 4), -h, 4, h - 5, beam, { 'stroke-width': 0.8 }));
-    g.append(rect(-w / 2, -h * 0.55, w, 3.6, beam, { 'stroke-width': 0.8 }));
-    g.append(line(-w / 2 + 2, -h * 0.55, -w / 2 + w / 3, -h + 2, beam, 2.2));
-    g.append(line(w / 2 - 2, -h * 0.55, w / 2 - w / 3, -h + 2, beam, 2.2));
-  }
-  // gable on the right wall
-  const apex = [w / 2 + dx / 2, -h - rh + dy / 2];
-  g.append(poly([[w / 2, -h], [w / 2 + dx, dy - h], apex], wallD));
-  // roof
-  const e1 = [-w / 2 - 6, -h + 5];
-  const e2 = [w / 2 + 6, -h + 5];
-  const r1 = [-w / 2 + dx / 2 - 6, -h - rh + dy / 2];
-  const r2 = [w / 2 + dx / 2 + 6, -h - rh + dy / 2];
-  g.append(poly([e1, e2, r2, r1], roof));
-  const rows = 5;
-  for (let rI = 1; rI <= rows; rI++) {
-    const tt = rI / (rows + 0.6);
-    const a = lerp(e1, r1, tt);
-    const b = lerp(e2, r2, tt);
-    g.append(line(a[0], a[1], b[0], b[1], roofD, 1.1, { opacity: 0.6 }));
-    const prev = lerp(e1, r1, (rI - 1) / (rows + 0.6));
-    const pb = lerp(e2, r2, (rI - 1) / (rows + 0.6));
-    const n = Math.max(5, Math.round(w / 9));
-    for (let k = 0; k < n; k++) {
-      const u = (k + (rI % 2 ? 0.25 : 0.75)) / n;
-      const p0 = lerp(prev, pb, u);
-      const p1 = lerp(a, b, u);
-      g.append(line(p0[0], p0[1], p1[0], p1[1], roofD, 0.8, { opacity: 0.42 }));
+    for (const [face, len] of [[faceL, w], [faceR, d]]) {
+      for (const f of [0, 0.33, 0.67, 1]) face.append(rect(f * (len - 3.4), -h, 3.4, h - 5, C.woodD, { 'stroke-width': 0.6 }));
+      face.append(rect(0, -h * 0.55, len, 3, C.woodD, { 'stroke-width': 0.6 }));
+      face.append(line(2, -h * 0.55, len * 0.33, -h + 1.5, C.woodD, 2));
     }
   }
-  g.append(poly([e1, e2, r2, r1], 'url(#sc-roofshade)', { stroke: INK }));
-  g.append(line(e1[0], e1[1], e2[0], e2[1], roofD, 3.4));
-  g.append(line(r1[0], r1[1], r2[0], r2[1], roofL, 2.4, { opacity: 0.9 }));
+  // gable end triangle on the right wall (pentagon wall)
+  const gable = el('g', { transform: `matrix(${AX} ${-AY} 0 1 0 0)` });
+  const aTop = -h - rh;
+  gable.append(poly([[0, -h], [d, -h], [d / 2, aTop]], wallFill, { stroke: 'none' }));
+  gable.append(poly([[0, -h], [d, -h], [d / 2, aTop]], '#2a1a0c', { opacity: 0.3, stroke: 'none' }));
+  if (timber) gable.append(line(d / 2, -h, d / 2, aTop + 3, C.woodD, 2.4));
+  // wall details
+  const doorW = Math.min(18, w * 0.28);
+  const doorU = w * 0.3;
+  if (door) {
+    const dd = doorAt(doorU, { w: doorW, h: Math.min(26, h * 0.82) });
+    faceL.append(dd);
+  }
+  if (barn) {
+    const bw = Math.min(w * 0.62, 40);
+    const bu = w * 0.46;
+    const bh = h * 0.86;
+    faceL.append(el('path', { d: `M${bu - bw / 2} -5V${-bh + 8}a${bw / 2} 8 0 0 1 ${bw} 0V-5z`, fill: barn === 'open' ? '#24180f' : shade('#8a5d33', 0.9), stroke: INK, 'stroke-width': 1.2 }));
+    if (barn === 'closed') {
+      faceL.append(line(bu, -5, bu, -bh, INK, 1));
+      for (const sgn of [-1, 1]) {
+        const x0 = bu + sgn * 2;
+        const x1 = bu + sgn * (bw / 2 - 2);
+        faceL.append(line(x0, -bh + 6, x1, -8, shade('#8a5d33', 0.6), 1.6));
+        faceL.append(line(x0, -8, x1, -bh + 6, shade('#8a5d33', 0.6), 1.6));
+      }
+    }
+    faceL.append(rect(bu - bw / 2 - 2, -5, 3, bh - 3, C.woodD, { 'stroke-width': 0.7 }));
+    faceL.append(rect(bu + bw / 2 - 1, -5, 3, bh - 3, C.woodD, { 'stroke-width': 0.7 }));
+  }
+  if (pilasters) {
+    for (const [face, len] of [[faceL, w], [faceR, d]]) {
+      const n = Math.max(2, Math.round(len / 18));
+      for (let i = 0; i <= n; i++) {
+        const u = (i / n) * (len - 6);
+        face.append(rect(u, -h + 2, 6, h - 7, C.wallL, { 'stroke-width': 0.7 }));
+        face.append(rect(u, -h + 2, 6, h - 7, 'url(#sc-shade)', { stroke: 'none' }));
+        face.append(rect(u - 1.5, -h, 9, 4, C.stoneL, { 'stroke-width': 0.7 }));
+        face.append(rect(u - 1.5, -9, 9, 4, C.stoneL, { 'stroke-width': 0.7 }));
+      }
+    }
+  }
+  const winSlots = wins === 0 ? [] : wins === 1 ? [0.74] : wins === 2 ? [0.62, 0.9] : [0.55, 0.74, 0.93];
+  for (const tt of winSlots) {
+    const wu = w * tt;
+    if (door && Math.abs(wu - doorU) < doorW) continue;
+    faceL.append(windowAt(wu, -h * 0.72, { shutters: h > 24 ? shutter : null, flowers: flowers && h > 24, lit }));
+  }
+  if (d > 30 && h > 24) faceR.append(windowAt(d * 0.5, -h * 0.72, { shutters: shutter, lit }));
+
+  g.append(faceL, faceR, gable);
+  // wall outlines
+  g.append(poly([P0, PL, up(PL, h), up(P0, h)], 'none'));
+  g.append(poly([P0, PR, up(PR, h), up(P0, h)], 'none'));
+  g.append(poly([up(P0, h), up(PR, h), [Rx / 2, Ry / 2 - h - rh]], 'none'));
+
+  // roof (near slope): eave along the left wall, ridge above the middle of the depth
+  const C0 = up(P0, h);
+  const CL = up(PL, h);
+  const A = [Rx / 2, Ry / 2 - h - rh];
+  const B = [A[0] + Lx, A[1] + Ly];
+  const e = [-Rx * 0.16, -Ry * 0.16 + 3];
+  const c1 = [C0[0] - Lx * 0.05 + e[0], C0[1] - Ly * 0.05 + e[1]];
+  const c2 = [CL[0] + Lx * 0.05 + e[0], CL[1] + Ly * 0.05 + e[1]];
+  const b = [B[0] + Lx * 0.05, B[1] + Ly * 0.05];
+  const a = [A[0] - Lx * 0.05, A[1] - Ly * 0.05];
+  const sx = a[0] - c1[0];
+  const sy = a[1] - c1[1];
+  const slen = Math.hypot(sx, sy);
+  const m = [Lx / w, Ly / w, sx / slen, sy / slen, c1[0], c1[1]];
+  const det = m[0] * m[3] - m[1] * m[2];
+  const loc = (p) => {
+    const px = p[0] - m[4];
+    const py = p[1] - m[5];
+    return [(px * m[3] - py * m[2]) / det, (py * m[0] - px * m[1]) / det];
+  };
+  const roofG = el('g', { transform: `matrix(${m.map((v) => v.toFixed(4)).join(' ')})` });
+  const lp = [c1, c2, b, a].map(loc);
+  roofG.append(poly(lp, roofTexture(roofTex, roof), { stroke: 'none' }));
+  roofG.append(poly(lp, 'url(#sc-roofshade2)', { stroke: 'none' }));
+  g.append(roofG);
+  // gable-end roof edge (barge boards) and outlines
+  g.append(poly([c1, c2, b, a], 'none', { 'stroke-width': 1.5 }));
+  g.append(line(c1[0], c1[1], c2[0], c2[1], shade(roof, 0.5), 2.6, { opacity: 0.85 }));
+  g.append(line(a[0], a[1], b[0], b[1], shade(roof, 1.25), 2.6));
+  g.append(line(c1[0], c1[1], a[0], a[1], shade(wall, 0.55), 2.4));
+  // eave shadow on the wall below the roof
+  g.append(poly([up(PL, h - 7), up(P0, h - 7), up(P0, h), up(PL, h)], 'url(#sc-eave)', { stroke: 'none', opacity: 0.9 }));
   if (chimney) {
-    const c0 = lerp(lerp(e1, r1, 0.62), lerp(e2, r2, 0.62), 0.74);
-    g.append(rect(c0[0] - 5, c0[1] - 20, 11, 22, C.stoneD, { 'stroke-width': 1.2 }));
-    g.append(rect(c0[0] - 6.5, c0[1] - 23, 14, 5, C.stone, { 'stroke-width': 1.1 }));
+    const q = [A[0] + Lx * 0.62, A[1] + Ly * 0.62 + 4];
+    g.append(poly([[q[0] - 6, q[1] + 2], [q[0] + 2, q[1] - 2], [q[0] + 2, q[1] - 24], [q[0] - 6, q[1] - 20]], '#a89a86'));
+    g.append(poly([[q[0] + 2, q[1] - 2], [q[0] + 8, q[1] - 5], [q[0] + 8, q[1] - 27], [q[0] + 2, q[1] - 24]], '#7a6d5c'));
+    g.append(poly([[q[0] - 8, q[1] - 20], [q[0] + 1, q[1] - 24.5], [q[0] + 10, q[1] - 28], [q[0] + 1, q[1] - 23]], '#cfc4b0', { 'stroke-width': 1 }));
   }
-  // door + windows
-  const doorX = -w * 0.06;
-  if (door) g.append(doorAt(doorX, { w: Math.min(18, w * 0.22), h: Math.min(26, h * 0.8) }));
-  const slots = wins === 0 ? [] : wins === 1 ? [0.5] : wins === 2 ? [0.2, 0.8] : [0.13, 0.5, 0.87];
-  for (const tt of slots) {
-    const wx = -w / 2 + w * tt;
-    if (door && Math.abs(wx - doorX) < 14) continue;
-    g.append(windowAt(wx, -h * 0.72, { shutters: h > 24 ? shutter : null, flowers: flowers && h > 24 }));
-  }
+  g.ridgeMid = [A[0] + Lx / 2 - (Lx + Rx) / 2 + x, A[1] + Ly / 2 + y];
   return g;
+}
+
+// Old call sites describe houses in the previous flat style; map them onto the iso house.
+function hall(o) {
+  const tex = o.tex ?? (o.planks ? 'plank' : o.timber ? 'timber' : 'plaster');
+  return house({
+    w: (o.w ?? 70) * 0.74,
+    d: (o.d ?? 44) * 0.8,
+    h: (o.h ?? 34) * 0.9,
+    rh: (o.rh ?? 22) * 0.95,
+    wall: o.wall ?? C.wall,
+    roof: o.roof ?? C.roof,
+    tex,
+    roofTex: o.roofTex ?? (o.roof === '#7f8f9c' || o.roof === '#5f6975' ? 'slate' : 'tile'),
+    door: o.door ?? true,
+    wins: o.wins ?? 2,
+    x: o.x ?? 0,
+    y: o.y ?? 0,
+    timber: !!o.timber,
+    chimney: !!o.chimney,
+    shutter: o.shutter ?? '#5f8a5a',
+    flowers: !!o.flowers,
+    lit: !!o.lit,
+    barn: o.barn ?? null,
+    pilasters: !!o.pilasters,
+  });
 }
 
 // A round tower with an optional conical roof, stone courses and arrow slits.
@@ -224,11 +393,16 @@ function tower({ r = 18, h = 60, cone = 30, wall = C.wall, wallD = C.wallD, roof
 
 function pine(x, y, s = 1) {
   const g = el('g', { transform: `translate(${x} ${y}) scale(${s})` });
-  g.append(shadow(2, 1, 11, 4));
+  g.append(shadow(5, 1, 12, 4));
   g.append(rect(-2.5, -8, 5, 9, C.woodD, { 'stroke-width': 1 }));
-  g.append(poly([[-14, -8], [0, -34], [14, -8]], C.pine));
-  g.append(poly([[-11, -22], [0, -46], [11, -22]], C.pineL));
-  g.append(poly([[-8, -36], [0, -56], [8, -36]], C.pineL));
+  const tier = (yb, yt, hw, light) => {
+    g.append(poly([[-hw, yb], [0, yt], [hw, yb]], light ? C.pineL : C.pine));
+    g.append(poly([[0, yt], [hw, yb], [0, yb]], C.pineD, { opacity: 0.55, 'stroke-width': 0 }));
+    g.append(poly([[-hw * 0.7, yb - 3], [-hw * 0.15, yt + 5], [-hw * 0.05, yb - 6]], '#8fc276', { opacity: 0.5, 'stroke-width': 0 }));
+  };
+  tier(-8, -34, 15, false);
+  tier(-22, -46, 12, true);
+  tier(-36, -58, 9, true);
   return g;
 }
 
@@ -240,8 +414,11 @@ function rock(x, y, s = 1, fill = C.stone, fillL = C.stoneL) {
   return el(
     'g',
     { transform: `translate(${x} ${y}) scale(${s})` },
+    shadow(4, 2, 22, 5),
     poly([[-18, 0], [-14, -16], [-2, -24], [14, -18], [20, -4], [14, 2]], fill),
-    poly([[-14, -16], [-2, -24], [14, -18], [2, -12]], fillL, { opacity: 0.9 }),
+    poly([[-14, -16], [-2, -24], [14, -18], [2, -12]], fillL, { opacity: 0.9, 'stroke-width': 0.8 }),
+    poly([[2, -12], [14, -18], [20, -4], [14, 2], [4, 1]], '#000', { opacity: 0.2, 'stroke-width': 0 }),
+    line(-6, -10, -2, -2, INK, 0.9, { opacity: 0.5 }),
   );
 }
 
@@ -295,8 +472,8 @@ function horse(x, y, s = 1) {
 const SPRITES = {
   town_hall(level) {
     const g = el('g');
-    g.append(tower({ r: 17, h: 66, cone: 30, wall: C.wallL, x: -44, y: -6 }));
-    g.append(el('g', { transform: 'translate(-44 -44)' }, el('circle', { r: 7, fill: C.cream, stroke: INK, 'stroke-width': 1.2 }), line(0, 0, 0, -4.5, INK, 1.2), line(0, 0, 3.4, 1, INK, 1.2)));
+    g.append(tower({ r: 17, h: 66, cone: 30, wall: C.wallL, x: -64, y: -18 }));
+    g.append(el('g', { transform: 'translate(-64 -56)' }, el('circle', { r: 7, fill: C.cream, stroke: INK, 'stroke-width': 1.2 }), line(0, 0, 0, -4.5, INK, 1.2), line(0, 0, 3.4, 1, INK, 1.2)));
     g.append(hall({ w: 84, d: 50, h: 40, rh: 26, wins: 3, x: -6, timber: true, chimney: true, flowers: true, shutter: '#7a3b2e' }));
     g.append(flag(62, -24, 56));
     g.append(rect(-14, -64, 28, 6, C.gold, { 'stroke-width': 1 }));
@@ -316,13 +493,10 @@ const SPRITES = {
   },
   warehouse() {
     const g = el('g');
-    g.append(hall({ w: 84, d: 50, h: 28, rh: 20, wall: C.woodL, wallD: C.wood, roof: '#7f8f9c', roofL: '#9fb0be', roofD: '#566573', door: false, wins: 0, x: -8, planks: true, chimney: true }));
-    g.append(rect(-26, -26, 30, 26, C.woodD, { rx: 2 }));
-    g.append(line(-26, -13, 4, -13, C.woodL, 1.4));
-    g.append(line(-11, -26, -11, 0, C.woodL, 1.4));
-    g.append(crate(52, 4, 1.1));
-    g.append(crate(66, -2, 0.9));
-    g.append(crate(56, -14, 0.9));
+    g.append(hall({ w: 84, d: 50, h: 28, rh: 20, wall: C.woodL, roof: '#7f8f9c', door: false, wins: 0, x: -6, planks: true, chimney: true, barn: 'closed' }));
+    g.append(crate(56, 4, 1.1));
+    g.append(crate(70, -2, 0.9));
+    g.append(crate(62, -14, 0.9));
     return g;
   },
   granary() {
@@ -348,7 +522,7 @@ const SPRITES = {
   },
   smithy() {
     const g = el('g');
-    g.append(hall({ w: 74, d: 48, h: 30, rh: 20, wall: '#d8cfc0', wallD: '#a9a091', roof: '#5f6975', roofL: '#7a8694', roofD: '#3f4852', wins: 1, door: false, x: -8 }));
+    g.append(hall({ w: 74, d: 48, h: 30, rh: 20, wall: '#d8cfc0', wallD: '#a9a091', roof: '#5f6975', roofL: '#7a8694', roofD: '#3f4852', wins: 1, door: false, x: -8, tex: 'stone', lit: true }));
     g.append(rect(30, -64, 12, 34, C.stoneD, { 'stroke-width': 1.3 }));
     g.append(smoke(36, -66));
     g.append(el('path', { d: 'M-22 0v-20a14 14 0 0 1 28 0v20z', fill: '#2d2118', stroke: INK, 'stroke-width': 1.4 }));
@@ -359,14 +533,13 @@ const SPRITES = {
   },
   stable() {
     const g = el('g');
-    g.append(poly([[-52, -34], [-52 + 14, -52], [52 + 14, -52], [52, -34]], C.roof));
-    g.append(line(-52, -34, 52, -34, C.roofD, 3));
-    for (const x of [-48, 0, 48]) g.append(rect(x - 3, -34, 6, 34, C.wood, { 'stroke-width': 1.2 }));
-    g.append(poly([[52, -34], [66, -52], [66, -18], [52, 0]], C.wood));
-    g.append(rect(-50, -8, 100, 5, C.woodD, { 'stroke-width': 1 }));
-    g.append(horse(-24, 0, 1));
-    g.append(horse(18, 2, 1.05));
-    g.append(el('g', {}, ellipse(54, 6, 12, 8, C.hay)));
+    g.append(hall({ w: 86, d: 50, h: 28, rh: 18, wall: '#b08a5a', roof: '#6f4a2a', roofTex: 'thatch', door: false, wins: 0, x: -4, planks: true, barn: 'open' }));
+    g.append(horse(-30, 12, 0.9));
+    g.append(horse(22, 14, 0.95));
+    g.append(rect(-52, 12, 3, 12, C.woodD, { 'stroke-width': 0.8 }));
+    g.append(line(-52, 16, -8, 22, C.woodD, 2));
+    g.append(ellipse(62, 8, 12, 8, C.hay));
+    g.append(ellipse(62, 2, 9, 6, C.goldL, { 'stroke-width': 1 }));
     return g;
   },
   workshop() {
@@ -413,18 +586,21 @@ const SPRITES = {
     return g;
   },
   palace() {
-    const g = el('g', { transform: 'scale(0.78)' });
-    g.append(hall({ w: 54, d: 40, h: 30, rh: 12, wall: C.wallL, roof: C.roof, wins: 2, x: -58, flowers: true }));
-    g.append(hall({ w: 54, d: 40, h: 30, rh: 12, wall: C.wallL, roof: C.roof, wins: 2, x: 34, flowers: true }));
-    g.append(rect(-34, -40, 68, 40, C.wall));
-    for (const x of [-26, -10, 10, 26]) g.append(rect(x - 3, -38, 6, 38, C.wallL, { 'stroke-width': 1.1 }));
-    g.append(rect(-36, -46, 72, 8, C.wallD));
-    g.append(rect(-24, -66, 48, 22, C.wall));
-    g.append(el('path', { d: 'M-26 -66a26 26 0 0 1 52 0z', fill: C.gold, stroke: INK, 'stroke-width': 1.5 }));
-    g.append(el('path', { d: 'M-14 -72q10-10 22-4', fill: 'none', stroke: C.goldL, 'stroke-width': 4 }));
-    g.append(line(0, -92, 0, -104, C.woodD, 2.5));
-    g.append(flag(0, -92, 18, C.red));
-    g.append(el('path', { d: 'M-8 0v-14a8 8 0 0 1 16 0v14z', fill: C.woodD, stroke: INK, 'stroke-width': 1.2 }));
+    const g = el('g');
+    const hs = hall({ w: 100, d: 70, h: 44, rh: 22, wall: '#f1e8d0', roof: '#a8483a', wins: 3, flowers: true, shutter: '#7a3b2e', x: 0, tex: 'stone', pilasters: true });
+    g.append(hs);
+    const [rx, ry] = hs.ridgeMid;
+    const dome = el('g', { transform: `translate(${rx.toFixed(1)} ${(ry + 6).toFixed(1)})` });
+    dome.append(shadow(2, 4, 24, 8));
+    dome.append(rect(-17, -16, 34, 18, C.wall, { rx: 3 }));
+    dome.append(rect(-17, -16, 34, 18, 'url(#sc-shade)', { stroke: 'none', rx: 3 }));
+    for (const dx of [-11, 0, 11]) dome.append(el('path', { d: `M${dx - 3} 0v-9a3 3 0 0 1 6 0v9z`, fill: C.woodD, stroke: INK, 'stroke-width': 0.8 }));
+    dome.append(el('path', { d: 'M-22 -16a22 24 0 0 1 44 0z', fill: C.gold, stroke: INK, 'stroke-width': 1.4 }));
+    dome.append(el('path', { d: 'M-22 -16a22 24 0 0 1 44 0z', fill: 'url(#sc-shade)', stroke: 'none' }));
+    dome.append(el('path', { d: 'M-14 -26q8-9 18-6', fill: 'none', stroke: '#fff3b0', 'stroke-width': 3.2, opacity: 0.85, 'stroke-linecap': 'round' }));
+    dome.append(line(0, -40, 0, -52, C.woodD, 2));
+    dome.append(flag(0, -52, 14, C.red));
+    g.append(dome);
     return g;
   },
   monument() {
@@ -495,6 +671,14 @@ const FIELD_SPRITES = {
       const y = -22 + i * 7;
       g.append(el('path', { d: `M${-58 + i * 2} ${y}q56 ${i % 2 ? -8 : 8} ${114 - i * 4} 0`, fill: 'none', stroke: C.hayD, 'stroke-width': 1.6, opacity: 0.85 }));
     }
+    for (let i = 0; i < 6; i++) {
+      const y = -22 + i * 7;
+      for (let k = 0; k < 15; k++) {
+        const x = -54 + i * 2 + k * 7.4 + (i % 2) * 3;
+        const yy = y + (i % 2 ? -1 : 1) * Math.sin(k * 0.8) * 2.2 - 2;
+        g.append(line(x, yy + 4, x + 0.8, yy - 1.5, k % 3 ? '#f6d974' : '#b8892a', 1.5, { opacity: 0.95 }));
+      }
+    }
     if (level >= 3) g.append(hall({ w: 34, d: 24, h: 18, rh: 14, wall: '#d9a07a', wallD: '#b07a55', wins: 0, door: true, x: -38, y: 2, planks: true }));
     if (level >= 6) {
       const mill = el('g', { transform: 'translate(44 6)' });
@@ -562,6 +746,13 @@ function drawTerrain(root, rng, fieldAnchors, fieldTypes) {
     el('radialGradient', { id: 'sc-shadow', cx: '50%', cy: '50%', r: '50%' }, el('stop', { offset: 0, 'stop-color': '#1d1408', 'stop-opacity': 0.42 }), el('stop', { offset: 1, 'stop-color': '#1d1408', 'stop-opacity': 0 })),
     el('radialGradient', { id: 'sc-town', cx: '50%', cy: '50%', r: '60%' }, el('stop', { offset: 0, 'stop-color': '#a9d06c' }), el('stop', { offset: 1, 'stop-color': '#7fae4c' })),
   );
+  defs.append(
+    el('linearGradient', { id: 'sc-ao', x1: 0, y1: 0, x2: 0, y2: 1 }, el('stop', { offset: 0, 'stop-color': '#1d1408', 'stop-opacity': 0 }), el('stop', { offset: 0.7, 'stop-color': '#1d1408', 'stop-opacity': 0 }), el('stop', { offset: 1, 'stop-color': '#1d1408', 'stop-opacity': 0.34 })),
+    el('linearGradient', { id: 'sc-eave', x1: 0, y1: 0, x2: 0, y2: 1 }, el('stop', { offset: 0, 'stop-color': '#1d1408', 'stop-opacity': 0.5 }), el('stop', { offset: 1, 'stop-color': '#1d1408', 'stop-opacity': 0 })),
+    el('linearGradient', { id: 'sc-roofshade2', x1: 0, y1: 0, x2: 0, y2: 1 }, el('stop', { offset: 0, 'stop-color': '#1d1408', 'stop-opacity': 0.28 }), el('stop', { offset: 0.5, 'stop-color': '#1d1408', 'stop-opacity': 0 }), el('stop', { offset: 1, 'stop-color': '#fff', 'stop-opacity': 0.22 })),
+  );
+  DEFS = defs;
+  MADE.clear();
   root.append(defs);
   root.append(rect(-700, -700, W + 1400, W + 1400, 'url(#sc-grass)', { stroke: 'none' }));
   // painterly patches
@@ -860,7 +1051,7 @@ export function renderScene(el0, ctx, { zoom = 'all' } = {}) {
   return svg;
 }
 
-const BOXES = { all: [0, 0, 1000, 1000], town: [175, 190, 650, 600] };
+const BOXES = { all: [0, -70, 1000, 1150], town: [175, 160, 650, 660] };
 const savedView = {};
 
 // The full-screen frame around the scene: fits the whole picture to the screen, drag to pan, wheel/pinch to zoom.
