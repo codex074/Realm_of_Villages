@@ -11,12 +11,14 @@ const TILE_COLORS = {
   oasis: '#7fbf6a',
   mountain: '#a08c74',
   lake: '#7fb2d9',
+  ruin: '#9b7fc4',
 };
 const TILE_LABELS = {
   valley: 'หุบเขา',
   oasis: 'โอเอซิส',
   mountain: 'ภูเขา',
   lake: 'ทะเลสาบ',
+  ruin: 'ซากโบราณ',
 };
 const CLICK_MAX_PX = 5;
 const ARROW_STEP = 3;
@@ -65,7 +67,14 @@ function fillInfo(panel, ctx, tile, center) {
   clear(panel);
   panel.append(h('div', { class: 'list-row' }, `พิกัด (${tile.x}, ${tile.y})`));
   panel.append(h('div', { class: 'list-row' }, TILE_LABELS[tile.kind] ?? tile.kind));
-  if (tile.oasis) {
+  if (tile.oasis && tile.kind === 'ruin') {
+    panel.append(h('div', { class: 'list-row' }, `ผู้พิทักษ์: ${tile.oasis.animals}`));
+    if (tile.oasis.owner_village_id != null) {
+      panel.append(
+        h('div', { class: 'list-row' }, tile.oasis.owned_by_me ? 'ของคุณ' : 'มีเจ้าของ'),
+      );
+    }
+  } else if (tile.oasis) {
     const resLabels = { wood: 'ไม้', stone: 'หิน', iron: 'เหล็ก', food: 'อาหาร' };
     panel.append(
       h('div', { class: 'list-row' }, `โบนัสผลิต: ${resLabels[tile.oasis_type] ?? tile.oasis_type}`),

@@ -26,6 +26,7 @@ export async function render(el, ctx) {
       h('th', {}, 'เผ่า'),
       h('th', {}, 'หมู่บ้าน'),
       h('th', {}, 'ประชากร'),
+      h('th', {}, 'อนุสาวรีย์'),
     ),
   );
   for (const row of rows) {
@@ -40,6 +41,7 @@ export async function render(el, ctx) {
         h('td', {}, (ctx.meta.tribes || {})[row.tribe]?.name_th ?? row.tribe),
         h('td', {}, fmtNum(row.villages)),
         h('td', {}, fmtNum(row.population)),
+        h('td', {}, row.monument > 0 ? String(row.monument) : '-'),
       ),
     );
   }

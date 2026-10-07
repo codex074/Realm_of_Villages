@@ -111,7 +111,14 @@ function infoDetail(ctx, data) {
       ...Object.entries(data.killed).map(([u, c]) => h('div', {}, `${unitName(ctx, u)} x${c}`)),
     );
   }
+  if (data.ruins) {
+    el.append(
+      h('h3', {}, 'ซากโบราณ'),
+      ...data.ruins.map((r) => h('div', {}, `(${r.x}, ${r.y})`)),
+    );
+  }
   if (data.winner) {
+    if (data.reason === 'monument') el.append(h('div', {}, 'ชนะด้วยอนุสาวรีย์'));
     el.append(
       h('div', {}, `ผู้ชนะ ${data.winner.name}`),
       h('div', {}, `อันดับของคุณ ${data.your_rank}`),
