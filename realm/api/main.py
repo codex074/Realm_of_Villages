@@ -9,7 +9,18 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from realm.api import ws
-from realm.api.routes import admin, auth, market, military, reports, smithy, state, villages, world
+from realm.api.routes import (
+    admin,
+    auth,
+    market,
+    military,
+    reports,
+    smithy,
+    state,
+    villages,
+    world,
+    world_join,
+)
 from realm.services.errors import (
     FORBIDDEN,
     NO_PLAYER,
@@ -65,6 +76,7 @@ def create_app(serve_static: bool = True) -> FastAPI:
     app.include_router(world.router, prefix="/api")
     app.include_router(reports.router, prefix="/api")
     app.include_router(admin.router, prefix="/api")
+    app.include_router(world_join.router, prefix="/api")
 
     if serve_static:
         web_dir = Path(__file__).resolve().parents[2] / "web"

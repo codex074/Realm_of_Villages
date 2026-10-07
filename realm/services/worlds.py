@@ -5,7 +5,7 @@ import math
 import random
 from datetime import datetime, timedelta
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from realm.core import movement, worldgen
@@ -16,7 +16,7 @@ from realm.core.slots import initial_buildings
 from realm.core.types import EventType, TileKind
 from realm.db.models import BotProfile, Building, Player, Tile, Village, World
 from realm.services import events, notify, ranking, reports
-from realm.services.errors import INVALID_TARGET, NOT_FOUND, GameError
+from realm.services.errors import INVALID_TARGET, NOT_FOUND, PAUSE_DISABLED, GameError
 from realm.services.views import Coord, MapTile, MapView
 
 VALID_SPEEDS = (1, 3, 5, 10)
@@ -225,9 +225,126 @@ def _make_village(
     return village
 
 
+def human_count(s: Session, world_id: int) -> int:
+    """Number of non-bot players in a world."""
+    return (
+        s.scalar(
+            select(func.count(Player.id)).where(
+                Player.world_id == world_id, Player.is_bot.is_(False)
+            )
+        )
+        or 0
+    )
+
+
+def join_world(
+    s: Session, account_id: int, name: str, tribe: str, real_now: datetime, cfg: GameConfig
+) -> Player:
+    """Join the current world as a human player with a new capital village."""
+    world = current_world(s)
+    if (
+        s.scalar(
+            select(Player.id).where(Player.world_id == world.id, Player.account_id == account_id)
+        )
+        is not None
+    ):
+        raise GameError(INVALID_TARGET, "เข้าร่วมโลกนี้แล้ว")
+    if tribe not in cfg.tribes:
+        raise GameError(INVALID_TARGET, "ไม่พบเผ่านี้")
+    name = name.strip()
+    if not 2 <= len(name) <= 20:
+        raise GameError(INVALID_TARGET, "ชื่อผู้เล่นไม่ถูกต้อง")
+    if (
+        s.scalar(
+            select(func.count(Player.id)).where(
+                Player.world_id == world.id, func.lower(Player.name) == name.lower()
+            )
+        )
+        or 0
+    ) > 0:
+        raise GameError(INVALID_TARGET, "ชื่อนี้ถูกใช้แล้ว")
+
+    size = world.size
+    villages = list(s.scalars(select(Village).where(Village.world_id == world.id)).all())
+    ring = min(
+        max((movement.distance(v.x, v.y, 0, 0, size) for v in villages), default=0.0),
+        size // 2 - 3,
+    )
+    tiles = list(
+        s.scalars(
+            select(Tile).where(
+                Tile.world_id == world.id,
+                Tile.kind == TileKind.VALLEY.value,
+                Tile.oasis_owner_village_id.is_(None),
+            )
+        ).all()
+    )
+    min_dist = float(cfg.world.min_village_distance)
+    upper = ring + 8
+    tile: Tile | None = None
+    while tile is None:
+        candidates = [
+            t
+            for t in tiles
+            if ring <= movement.distance(t.x, t.y, 0, 0, size) <= upper
+            and all(movement.distance(t.x, t.y, v.x, v.y, size) >= min_dist for v in villages)
+        ]
+        if candidates:
+            candidates.sort(key=lambda t: (t.x, t.y))
+            random.Random(f"{world.seed}:join:{account_id}").shuffle(candidates)
+            tile = candidates[0]
+        else:
+            upper += 8
+            if upper > size // 2:
+                raise GameError(INVALID_TARGET, "ไม่มีที่ว่างสำหรับหมู่บ้านใหม่")
+
+    now = world_now(world, real_now)
+    player = Player(
+        world_id=world.id,
+        name=name,
+        tribe=tribe,
+        is_bot=False,
+        account_id=account_id,
+        production_mult=1.0,
+        culture_points=0.0,
+        cp_updated_at=now,
+        protection_until=now + timedelta(seconds=cfg.world.protection_hours * 3600 / world.speed),
+        created_at=now,
+    )
+    s.add(player)
+    s.flush()
+    start = cfg.world.start_resources
+    village = Village(
+        world_id=world.id,
+        player_id=player.id,
+        name=f"บ้านของ{name}",
+        x=tile.x,
+        y=tile.y,
+        layout=tile.layout,
+        is_capital=True,
+        wood=start.wood,
+        stone=start.stone,
+        iron=start.iron,
+        food=start.food,
+        res_updated_at=now,
+        created_at=now,
+    )
+    s.add(village)
+    s.flush()
+    s.add_all(
+        Building(village_id=village.id, slot=slot, type=btype, level=level)
+        for slot, (btype, level) in initial_buildings(tile.layout, cfg).items()
+    )
+    player.capital_village_id = village.id
+    s.flush()
+    return player
+
+
 def pause(s: Session, real_now: datetime) -> World:
     """Pause the current running world at real_now (idempotent)."""
     world = current_world(s)
+    if human_count(s, world.id) > 1:
+        raise GameError(PAUSE_DISABLED, "หยุดเกมไม่ได้เมื่อมีผู้เล่นมากกว่า 1 คน")
     if world.paused_at is None:
         world.paused_at = real_now
     s.flush()

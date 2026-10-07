@@ -33,6 +33,13 @@ class NewWorldBody(BaseModel):
     bot_count: int = 30
 
 
+class JoinBody(BaseModel):
+    """Body of POST /api/world/join."""
+
+    name: str
+    tribe: str
+
+
 class TrainBody(BaseModel):
     """Body of POST /api/villages/{id}/train."""
 
