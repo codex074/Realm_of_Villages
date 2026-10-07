@@ -14,6 +14,7 @@ from realm.api.routes import (
     admin,
     alliances,
     auth,
+    intel,
     market,
     military,
     reports,
@@ -77,6 +78,7 @@ def create_app(serve_static: bool = True) -> FastAPI:
     app.include_router(market.router, prefix="/api")
     app.include_router(smithy.router, prefix="/api")
     app.include_router(world.router, prefix="/api")
+    app.include_router(intel.router, prefix="/api")
     app.include_router(reports.router, prefix="/api")
     app.include_router(admin.router, prefix="/api")
     app.include_router(world_join.router, prefix="/api")
