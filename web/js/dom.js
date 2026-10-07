@@ -42,3 +42,16 @@ export function h(tag, attrs = {}, ...children) {
 export function clear(el) {
   while (el.firstChild) el.removeChild(el.firstChild);
 }
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+// Hand-drawn sprite icon (web/img/icons.svg): icon('wood') -> <svg class="ico"><use .../></svg>.
+export function icon(name, cls = 'ico') {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('class', cls);
+  svg.setAttribute('aria-hidden', 'true');
+  const use = document.createElementNS(SVG_NS, 'use');
+  use.setAttribute('href', `img/icons.svg#i-${name}`);
+  svg.append(use);
+  return svg;
+}

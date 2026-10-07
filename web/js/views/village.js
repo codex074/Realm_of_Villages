@@ -1,7 +1,7 @@
 // Village view: fields grid, build queue, troops and movements (BUILD.md section 10).
 
 import { api, ApiError } from '../api.js';
-import { h, clear } from '../dom.js';
+import { h, clear, icon } from '../dom.js';
 import { countdown } from '../clock.js';
 import { fmtNum } from '../format.js';
 import { queuePanel, openSlotPanel } from './slotpanel.js';
@@ -75,6 +75,7 @@ function fieldCell(el, ctx, b) {
   const cell = h(
     'div',
     { class: classes.join(' ') },
+    b.type ? icon(b.type, 'ico slot-icon') : null,
     h('div', { class: 'slot-level' }, String(b.level)),
     h('div', { class: 'slot-label' }, b.name_th ?? 'ว่าง'),
   );

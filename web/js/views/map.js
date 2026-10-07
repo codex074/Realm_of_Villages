@@ -7,11 +7,11 @@ const CELL = 40;
 const SIZE = 15;
 const RADIUS = 7;
 const TILE_COLORS = {
-  valley: '#cfe3b4',
-  oasis: '#7fbf6a',
-  mountain: '#a08c74',
-  lake: '#7fb2d9',
-  ruin: '#9b7fc4',
+  valley: '#d6e3b0',
+  oasis: '#b9d98f',
+  mountain: '#cdbf9f',
+  lake: '#b5d3e6',
+  ruin: '#d9ccea',
 };
 const TILE_LABELS = {
   valley: 'หุบเขา',
@@ -32,8 +32,39 @@ function centerFrom(params, ctx) {
   return { x: v.x, y: v.y };
 }
 
+// Hand-drawn map icons: cut single symbols out of the sprite and turn them into images.
+const MAP_ICONS = ['village', 'oasis', 'ruin', 'mountain', 'lake'];
+let iconCache = null;
+
+async function loadIcons() {
+  if (iconCache) return iconCache;
+  const text = await (await fetch('img/icons.svg')).text();
+  const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
+  const out = {};
+  await Promise.all(
+    MAP_ICONS.map(async (name) => {
+      const sym = doc.getElementById(`i-${name}`);
+      if (!sym) return;
+      const markup =
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="128" height="128">` +
+        new XMLSerializer().serializeToString(sym).replace(/^<symbol[^>]*>/, '').replace(/<\/symbol>$/, '') +
+        '</svg>';
+      const img = new Image();
+      img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`;
+      try {
+        await img.decode();
+        out[name] = img;
+      } catch {
+        // icon stays missing: the tile is drawn without it
+      }
+    }),
+  );
+  iconCache = out;
+  return out;
+}
+
 // Draw the whole map onto the canvas 2D context.
-function drawMap(canvas, map, center) {
+function drawMap(canvas, map, center, icons = {}) {
   const ctx2 = canvas.getContext('2d');
   ctx2.clearRect(0, 0, canvas.width, canvas.height);
   for (const t of map.tiles) {
@@ -44,20 +75,52 @@ function drawMap(canvas, map, center) {
     const py = row * CELL;
     ctx2.fillStyle = TILE_COLORS[t.kind] || TILE_COLORS.valley;
     ctx2.fillRect(px, py, CELL, CELL);
-    ctx2.strokeStyle = 'rgba(0,0,0,0.15)';
+    // grass hatching for valleys, so the map does not look like flat colour blocks
+    if (t.kind === 'valley') {
+      ctx2.strokeStyle = 'rgba(80, 120, 50, 0.22)';
+      ctx2.lineWidth = 1;
+      for (let i = 0; i < 3; i++) {
+        const gx = px + 8 + ((t.x * 7 + t.y * 13 + i * 11) % 24);
+        const gy = py + 10 + ((t.x * 5 + t.y * 3 + i * 17) % 22);
+        ctx2.beginPath();
+        ctx2.moveTo(gx, gy);
+        ctx2.lineTo(gx - 2, gy - 5);
+        ctx2.moveTo(gx, gy);
+        ctx2.lineTo(gx + 2, gy - 5);
+        ctx2.stroke();
+      }
+    }
+    ctx2.strokeStyle = 'rgba(70, 45, 15, 0.22)';
     ctx2.lineWidth = 1;
     ctx2.strokeRect(px + 0.5, py + 0.5, CELL - 1, CELL - 1);
+    const terrainIcon = icons[t.kind];
+    if (terrainIcon && !t.village) {
+      ctx2.drawImage(terrainIcon, px + CELL * 0.08, py + CELL * 0.08, CELL * 0.84, CELL * 0.84);
+      if (t.oasis && t.oasis.owner_village_id != null) {
+        ctx2.strokeStyle = t.oasis.owned_by_me ? '#1f5fbf' : '#c0392b';
+        ctx2.lineWidth = 3;
+        ctx2.strokeRect(px + 2, py + 2, CELL - 4, CELL - 4);
+      }
+    }
     if (t.village) {
       ctx2.beginPath();
-      ctx2.arc(px + CELL / 2, py + CELL / 2, CELL * 0.28, 0, Math.PI * 2);
-      ctx2.fillStyle = t.village.is_mine ? '#1f5fbf' : '#c0392b';
+      ctx2.arc(px + CELL / 2, py + CELL / 2, CELL * 0.44, 0, Math.PI * 2);
+      ctx2.fillStyle = t.village.is_mine ? 'rgba(74, 111, 165, 0.55)' : 'rgba(166, 61, 61, 0.45)';
       ctx2.fill();
+      if (icons.village) {
+        ctx2.drawImage(icons.village, px + CELL * 0.1, py + CELL * 0.1, CELL * 0.8, CELL * 0.8);
+      }
+      ctx2.beginPath();
+      ctx2.arc(px + CELL / 2, py + CELL / 2, CELL * 0.44, 0, Math.PI * 2);
+      ctx2.strokeStyle = t.village.is_mine ? '#1f4f8f' : '#7a2020';
+      ctx2.lineWidth = 2.5;
+      ctx2.stroke();
     }
   }
   // Darker outline on the center cell.
   const ccx = (center.x - (center.x - RADIUS)) * CELL;
   const ccy = (center.y - (center.y - RADIUS)) * CELL;
-  ctx2.strokeStyle = '#333';
+  ctx2.strokeStyle = '#c9a227';
   ctx2.lineWidth = 3;
   ctx2.strokeRect(ccx + 1.5, ccy + 1.5, CELL - 3, CELL - 3);
 }
@@ -125,7 +188,8 @@ export async function render(el, ctx, params) {
     height: String(SIZE * CELL),
     class: 'map-canvas',
   });
-  drawMap(canvas, map, center);
+  const icons = await loadIcons();
+  drawMap(canvas, map, center, icons);
 
   const info = h('div', { class: 'panel' });
 

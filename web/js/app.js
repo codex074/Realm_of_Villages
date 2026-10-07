@@ -25,6 +25,7 @@ const ROUTES = [
   { pattern: ['reports', ':id'], view: 'reports' },
   { pattern: ['ranking'], view: 'ranking' },
   { pattern: ['rally', ':vid'], view: 'rally' },
+  { pattern: ['help'], view: 'help' },
 ];
 
 // ---- DOM refs ----
@@ -234,7 +235,10 @@ function tickClock() {
 }
 
 function updatePauseBtn() {
-  pauseBtn.textContent = state && state.paused ? 'เล่นต่อ' : 'หยุด';
+  document.getElementById('pause-label').textContent = state && state.paused ? 'เล่นต่อ' : 'หยุด';
+  document
+    .getElementById('pause-use')
+    .setAttribute('href', `img/icons.svg#i-${state && state.paused ? 'play' : 'pause'}`);
 }
 
 function updateVillageSelect() {
@@ -311,7 +315,7 @@ function updateReportsBadge() {
   const link = navLinks[3];
   if (!link) return;
   const n = state?.unread_reports ?? 0;
-  link.textContent = n > 0 ? `รายงาน (${n})` : 'รายงาน';
+  link.querySelector('.nav-label').textContent = n > 0 ? `รายงาน (${n})` : 'รายงาน';
 }
 
 function updateNav() {

@@ -1,6 +1,6 @@
 // Center view: slots 19-40 grid (BUILD.md section 10).
 
-import { h, clear } from '../dom.js';
+import { h, clear, icon } from '../dom.js';
 import { queuePanel, openSlotPanel } from './slotpanel.js';
 
 const HEADING = 'ใจกลางหมู่บ้าน';
@@ -19,6 +19,7 @@ function centerCell(el, ctx, b) {
   const cell = h(
     'div',
     { class: classes.join(' ') },
+    b.type ? icon(b.type, 'ico slot-icon') : null,
     h('div', { class: 'slot-label' }, b.name_th ?? EMPTY),
     b.type ? h('div', { class: 'slot-level' }, String(b.level)) : null,
   );

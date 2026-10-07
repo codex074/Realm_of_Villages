@@ -5,28 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Realm of Villages</title>
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/theme.css">
 </head>
 <body>
   <header id="topbar">
     <div id="resources">
-      <span class="res res-wood"><span class="res-icon">🪵</span><span id="res-wood">0</span></span>
-      <span class="res res-stone"><span class="res-icon">🪨</span><span id="res-stone">0</span></span>
-      <span class="res res-iron"><span class="res-icon">⛏️</span><span id="res-iron">0</span></span>
-      <span class="res res-food"><span class="res-icon">🌾</span><span id="res-food">0</span></span>
+      <span class="res res-wood"><span class="res-icon"><svg class="ico"><use href="img/icons.svg#i-wood"/></svg></span><span id="res-wood">0</span></span>
+      <span class="res res-stone"><span class="res-icon"><svg class="ico"><use href="img/icons.svg#i-stone"/></svg></span><span id="res-stone">0</span></span>
+      <span class="res res-iron"><span class="res-icon"><svg class="ico"><use href="img/icons.svg#i-iron"/></svg></span><span id="res-iron">0</span></span>
+      <span class="res res-food"><span class="res-icon"><svg class="ico"><use href="img/icons.svg#i-food"/></svg></span><span id="res-food">0</span></span>
     </div>
     <div id="clock"></div>
-    <button id="pause-btn" class="btn">หยุด</button>
+    <button id="pause-btn" class="btn"><svg class="ico pause-ico"><use id="pause-use" href="img/icons.svg#i-pause"/></svg><span id="pause-label">หยุด</span></button>
+    <a id="help-link" href="#/help" aria-label="วิธีเล่น"><svg class="ico"><use href="img/icons.svg#i-help"/></svg></a>
     <select id="village-select"></select>
   </header>
 
   <main id="view"></main>
 
   <nav id="bottomnav">
-    <a class="nav-link" href="#/">หมู่บ้าน</a>
-    <a class="nav-link" href="#/center">ใจกลาง</a>
-    <a class="nav-link" href="#/map">แผนที่</a>
-    <a class="nav-link" href="#/reports">รายงาน</a>
-    <a class="nav-link" href="#/ranking">อันดับ</a>
+    <a class="nav-link" href="#/"><svg class="ico"><use href="img/icons.svg#i-village"/></svg><span class="nav-label">หมู่บ้าน</span></a>
+    <a class="nav-link" href="#/center"><svg class="ico"><use href="img/icons.svg#i-center"/></svg><span class="nav-label">ใจกลาง</span></a>
+    <a class="nav-link" href="#/map"><svg class="ico"><use href="img/icons.svg#i-map"/></svg><span class="nav-label">แผนที่</span></a>
+    <a class="nav-link" href="#/reports"><svg class="ico"><use href="img/icons.svg#i-scroll"/></svg><span class="nav-label">รายงาน</span></a>
+    <a class="nav-link" href="#/ranking"><svg class="ico"><use href="img/icons.svg#i-trophy"/></svg><span class="nav-label">อันดับ</span></a>
   </nav>
 
   <div id="toast" hidden></div>
