@@ -1,0 +1,27 @@
+{
+  "id": "T40a",
+  "title": "phase 4: alliance rules (no attacks on allies) + alliance name in ranking and map",
+  "spec": [
+    "1736-1745"
+  ],
+  "read": [
+    "realm/services/alliances.py",
+    "realm/services/ranking.py",
+    "realm/services/views.py",
+    "realm/services/military.py",
+    "realm/services/worlds.py",
+    "tests/services/test_military_send.py",
+    "tests/services/test_alliances.py"
+  ],
+  "write": [
+    "realm/services/alliances.py",
+    "realm/services/ranking.py",
+    "realm/services/views.py",
+    "realm/services/military.py",
+    "realm/services/worlds.py",
+    "tests/services/test_alliance_rules.py"
+  ],
+  "test_cmd": "uv run pytest tests/services/test_alliance_rules.py tests/services/test_alliances.py tests/services/test_military_send.py tests/services/test_worlds.py tests/services/test_views.py -q",
+  "criteria": "Make alliances matter in the game rules. EDITING RULE: military.py, worlds.py, views.py and ranking.py already contain proofread Thai: change them ONLY with small targeted Edit operations (never rewrite or Write whole files). New logic goes into alliances.py (append at the end, also an Edit/append) and the NEW test file.\n== realm/services/alliances.py (append) ==\n`alliance_names(s, world_id: int) -> dict[int, str]`: maps player_id -> alliance name for every member of every alliance in that world (one query joining AllianceMember and Alliance).\n== realm/services/views.py == add `alliance: str | None = None` to RankingRow (after `monument`). MapTile.village is a free dict, no model change.\n== realm/services/ranking.py == get_ranking: call alliances.alliance_names(s, world_id) once and fill RankingRow.alliance (None when the player has no alliance). Keep the ordering unchanged.\n== realm/services/worlds.py == get_map: in the village dict add `'alliance': <alliance name or None>` and `'is_ally': True when the owner is in the same alliance as the viewing player_id and is not the viewer, else False` (use alliance_names(s, world_id) once per call; allies = same alliance name as the viewer's, viewer not counted).\n== realm/services/military.py == in `_check_send`, inside the `elif mission in HOSTILE_MISSIONS:` branch where a target village exists and belongs to another player (right after the existing `elif target.player_id == player_id:` self-target check and before the protection check), add: if alliances.are_allies(s, player_id, target.player_id) -> problems.append((INVALID_TARGET, ALLY_TARGET_TH)) with the module constant ALLY_TARGET_TH = 'โจมตีพันธมิตรไม่ได้' defined next to the other *_TH constants; import `from realm.services import alliances` the same way other services are imported there (check for a circular import: alliances.py must not import military). SCOUT is also a hostile mission: it is blocked too. REINFORCE and TRADE are unaffected.\n== tests/services/test_alliance_rules.py (new; DB fixtures `s`, `cfg`, `t0`; world = worlds.create_world(s, seed=1, speed=1, player_name='ผู้เล่น', tribe='stonehold', bot_count=30, cfg=cfg, real_now=t0)) ==\nBuild extra human players with direct Player rows + a village each (copy real columns from an existing player/village; look at tests/services/test_military_send.py for how it makes a second player/village and gives troops and a rally point) and put two humans in an alliance through alliances.create_alliance/invite/accept_invite. Cover: alliance_names (members mapped, outsiders and bots absent, other world absent -> only check the same world); get_ranking row has alliance name for members and None otherwise and the order is unchanged versus before joining an alliance; get_map village dict has alliance and is_ally (True for the ally, False for self, False for a non-allied player); military.send_troops ATTACK, RAID and SCOUT at an ally village -> GameError INVALID_TARGET; REINFORCE to an ally village still works; ATTACK at a non-allied human still passes validation (use the same preconditions as test_military_send.py, protection must be over); after the leader kicks the member (alliances.kick) the attack is allowed again.",
+  "notes": "- Thai strings: use ONLY 'โจมตีพันธมิตรไม่ได้' (copy letter by letter; Qwen tends to double tone marks) and do not retype any other Thai in existing files.\n- Real columns only in tests. Never commit; never call datetime.now(); run only the test_cmd files.\n- Existing tests must keep passing (RankingRow.alliance has a default so old constructors still work)."
+}
