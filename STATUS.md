@@ -25,7 +25,7 @@
 | T12b | merged | 1 | ผ่านรอบแรก ตัวเลขรบตรวจอิสระตรงกัน (38/50, 27/36) |
 | T11 | merged | 1 | ผ่านรอบแรก ไม่ต้องแก้ (ข้อความไทยที่ให้คัดลอก ถูกต้องครบ) |
 | T13a | merged | 1 | Claude แก้คำไทย "น้ี"x2 "ท่ี"x1 ที่ Qwen พิมพ์ผิดแม้ให้คัดลอก; logic ถูกต้อง |
-| T13b | todo | 0 | military: resolve_arrival รบ/สอดแนม/เสริม + reports |
+| T13b | merged | 1 | ผ่านรอบแรก; Claude แก้ลูปหักทหารตาย (sloppy แต่ผลถูก); Qwen แก้ test_worker เพราะ stub MOVEMENT_ARRIVE เปลี่ยน (wrapper หยุดด้วย exit 4 ครั้งเดียว ตรวจแล้วชอบธรรม) |
 | T08 | merged | 1 | Claude แก้ healthcheck (ขาด "CMD"); build+up จริงผ่าน: migrate, เว็บ/API/WS ผ่าน Caddy :8080, engine ทำงาน, backup.sh ใช้ได้ |
 
 สถานะที่ใช้: todo · delegated · in-review · merged · blocked · claude-fallback
