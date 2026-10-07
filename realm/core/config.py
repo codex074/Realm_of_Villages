@@ -99,6 +99,12 @@ class OasisSection(_Model):
     animals: dict[str, AnimalDef]
 
 
+class MarketSection(_Model):
+    merchant_speed: float
+    capacity_per_level: float
+    npc_fee: float
+
+
 class BuildingDef(_Model):
     key: str
     name_th: str
@@ -176,6 +182,7 @@ class GameConfig(_Model):
     culture: CultureSection
     upgrades: UpgradesSection
     oasis: OasisSection
+    market: MarketSection
     buildings: dict[str, BuildingDef]
     units: dict[str, UnitDef]
     tribes: dict[str, TribeDef]

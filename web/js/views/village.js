@@ -15,6 +15,7 @@ const MISSION_LABELS = {
   reinforce: 'ส่งทัพเสริม',
   settle: 'ตั้งหมู่บ้านใหม่',
   return: 'กลับบ้าน',
+  trade: 'ขนส่งทรัพยากร',
 };
 
 // Heading with the village name and a rename button.

@@ -116,6 +116,7 @@ export async function openSlotPanel(el, ctx, slot) {
   }
   if (view.current) await appendTraining(ctx, sheet, view.current);
   if (view.current && view.current.type === 'smithy') await appendSmithy(ctx, sheet);
+  if (view.current && view.current.type === 'marketplace') await appendMarket(ctx, sheet);
   el.append(sheet);
 }
 
@@ -240,4 +241,102 @@ async function appendTraining(ctx, sheet, current) {
       )
     : [h('div', { class: 'list-row muted' }, 'ไม่มีคิวฝึก')];
   sheet.append(h('h3', {}, 'คิวฝึกทหาร'), ...rows);
+}
+
+
+// POST a trade shipment, toast the result, refresh; re-enable the button on error.
+async function doSend(btn, ctx, toVillageId, inputs) {
+  btn.disabled = true;
+  try {
+    await api.post(`/villages/${ctx.villageId}/trade/send`, {
+      to_village_id: toVillageId,
+      wood: Number(inputs.wood.value) || 0,
+      stone: Number(inputs.stone.value) || 0,
+      iron: Number(inputs.iron.value) || 0,
+      food: Number(inputs.food.value) || 0,
+    });
+    ctx.toast('ส่งทรัพยากรแล้ว');
+    await ctx.refresh();
+  } catch (err) {
+    if (err instanceof ApiError) ctx.toast(err.message, true);
+    btn.disabled = false;
+  }
+}
+
+// POST an NPC exchange, toast the result, refresh; re-enable the button on error.
+async function doExchange(btn, ctx, give, take, amount) {
+  btn.disabled = true;
+  try {
+    await api.post(`/villages/${ctx.villageId}/trade/exchange`, { give, take, amount });
+    ctx.toast('แลกทรัพยากรแล้ว');
+    await ctx.refresh();
+  } catch (err) {
+    if (err instanceof ApiError) ctx.toast(err.message, true);
+    btn.disabled = false;
+  }
+}
+
+// Marketplace section of the slot sheet: send resources and NPC exchange.
+async function appendMarket(ctx, sheet) {
+  let info;
+  try {
+    info = await api.get(`/villages/${ctx.villageId}/market`);
+  } catch {
+    return;
+  }
+  sheet.append(h('h3', {}, 'ส่งทรัพยากร'));
+  sheet.append(h('div', { class: 'muted' }, `ความจุต่อเที่ยว ${fmtNum(info.capacity)}`));
+  const others = (ctx.state.villages || []).filter((v) => v.id !== ctx.villageId);
+  if (!others.length) {
+    sheet.append(h('div', { class: 'muted' }, 'ไม่มีหมู่บ้านปลายทาง'));
+    return;
+  }
+  const dest = h(
+    'select',
+    {},
+    ...others.map((v) => h('option', { value: String(v.id) }, v.name)),
+  );
+  const inputs = {};
+  for (const k of RES_KEYS) {
+    inputs[k] = h('input', { type: 'number', min: '0', value: '0' });
+  }
+  const sendBtn = h('button', { class: 'btn btn-primary' }, 'ส่ง');
+  sendBtn.addEventListener('click', () => doSend(sendBtn, ctx, Number(dest.value), inputs));
+  sheet.append(
+    h('div', { class: 'slot-option' },
+      ...RES_KEYS.map((k) => h('div', { class: 'unit-row' }, h('span', {}, RES_LABELS[k]), inputs[k])),
+      dest,
+      sendBtn,
+    ),
+  );
+  sheet.append(h('h3', {}, 'แลกทรัพยากร'));
+  const giveSel = h(
+    'select',
+    {},
+    ...RES_KEYS.map((k) => h('option', { value: k }, RES_LABELS[k])),
+  );
+  const takeSel = h(
+    'select',
+    {},
+    ...RES_KEYS.map((k) => h('option', { value: k }, RES_LABELS[k])),
+  );
+  const amount = h('input', { type: 'number', min: '1', value: '1' });
+  const preview = h('div', { class: 'muted' });
+  const updatePreview = () => {
+    const n = Number(amount.value) || 0;
+    preview.textContent = `ได้รับ ${Math.floor(n * (1 - info.fee))}`;
+  };
+  amount.addEventListener('input', updatePreview);
+  updatePreview();
+  const exBtn = h('button', { class: 'btn btn-primary' }, 'แลก');
+  exBtn.addEventListener('click', () =>
+    doExchange(exBtn, ctx, giveSel.value, takeSel.value, Number(amount.value) || 0),
+  );
+  sheet.append(
+    h('div', { class: 'slot-option' },
+      h('div', { class: 'unit-row' }, giveSel, takeSel, amount),
+      preview,
+      exBtn,
+    ),
+  );
 }

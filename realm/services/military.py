@@ -12,7 +12,7 @@ from realm.core import units as units_core
 from realm.core.config import GameConfig
 from realm.core.types import EventType, Mission, Res, TileKind, Units
 from realm.db.models import Building, Movement, Player, Tile, Troop, Village, World
-from realm.services import conquest, events, notify, oasis, reports, smithy, villages
+from realm.services import conquest, events, market, notify, oasis, reports, smithy, villages
 from realm.services.errors import (
     FORBIDDEN,
     INVALID_TARGET,
@@ -105,7 +105,7 @@ def _check_send(
         units=_positive_units(units),
     )
     problems: list[tuple[str, str]] = []
-    if mission is Mission.RETURN:
+    if mission in (Mission.RETURN, Mission.TRADE):
         problems.append((INVALID_TARGET, RETURN_MISSION_TH))
     if villages.levels(s, village.id).get("rally_point", 0) < 1:
         problems.append(
@@ -870,3 +870,5 @@ def resolve_arrival(s: Session, movement_id: int, now: datetime, cfg: GameConfig
         _resolve_reinforce_arrival(s, m, world, now, cfg)
     elif m.mission == Mission.SETTLE.value:
         _resolve_settle_arrival(s, m, world, now, cfg)
+    elif m.mission == Mission.TRADE.value:
+        market.resolve_trade_arrival(s, m, now, cfg)

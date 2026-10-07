@@ -39,6 +39,24 @@ class UpgradeBody(BaseModel):
     unit: str
 
 
+class TradeBody(BaseModel):
+    """Body of POST /api/villages/{id}/trade/send."""
+
+    to_village_id: int
+    wood: float = 0
+    stone: float = 0
+    iron: float = 0
+    food: float = 0
+
+
+class ExchangeBody(BaseModel):
+    """Body of POST /api/villages/{id}/trade/exchange."""
+
+    give: str
+    take: str
+    amount: float
+
+
 class SendBody(BaseModel):
     """Body of POST /api/villages/{id}/send and /send/preview."""
 

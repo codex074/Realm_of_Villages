@@ -7,7 +7,7 @@ import sys
 
 PAT = re.compile(r"([ัิ-ฺ็-๎])\1|[่-๋][่-๋]|[่-๋][ิ-ื]")
 # typos Qwen has produced before
-KNOWN_BAD = ("บ่าน", "ท่ี", "น้ี", "อับดับ", "แผนท่ี", "มีย ", "เวลาถิง", "'สุม'", "ตั้บ")
+KNOWN_BAD = ("บ่าน", "ท่ี", "น้ี", "อับดับ", "แผนท่ี", "มีย ", "เวลาถิง", "'สุม'", "ตั้บ", "ร่ับ", "ส่่")
 bad = 0
 files = [
     *glob.glob("realm/**/*.py", recursive=True),

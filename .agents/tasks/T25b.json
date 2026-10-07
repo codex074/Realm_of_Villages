@@ -1,0 +1,27 @@
+{
+  "id": "T25b",
+  "title": "api + web: marketplace (send resources, NPC exchange)",
+  "spec": ["1165-1218", "1219-1248"],
+  "read": [
+    "realm/api/main.py",
+    "realm/api/schemas.py",
+    "realm/api/routes/military.py",
+    "realm/services/market.py",
+    "web/js/views/slotpanel.js",
+    "web/js/views/village.js",
+    "web/js/views/rally.js",
+    "tests/api/test_api_smithy.py"
+  ],
+  "write": [
+    "realm/api/routes/market.py",
+    "realm/api/schemas.py",
+    "realm/api/main.py",
+    "web/js/views/slotpanel.js",
+    "web/js/views/village.js",
+    "web/js/views/rally.js",
+    "tests/api/test_api_market.py"
+  ],
+  "test_cmd": "uv run pytest tests -q -rs && find web -name '*.js' -print0 | xargs -0 -n1 node --check",
+  "criteria": "EDITING RULE: realm/api/main.py, realm/api/schemas.py and web/js/views/{slotpanel,village,rally}.js already exist with proofread Thai strings: change them ONLY with small targeted Edit operations (never rewrite whole files). New Python goes into the NEW file realm/api/routes/market.py.\n== API == (all under /api, sync `def` routes, same Depends style as routes/military.py)\nGET /villages/{village_id}/market -> market.market_info(s, village_id, cfg) plus nothing else (a plain dict {level, capacity, fee, merchant_speed}); the village must belong to the player (reuse villages.lock_village? simply check village ownership: load the Village, GameError NOT_FOUND villages.VILLAGE_NOT_FOUND_TH when missing, FORBIDDEN villages.FORBIDDEN_TH when another player's). POST /villages/{village_id}/trade/send body TradeBody {to_village_id: int, wood: float = 0, stone: float = 0, iron: float = 0, food: float = 0} -> MovementView (market.send_resources(s, player.id, village_id, body.to_village_id, {resource: amount for amounts > 0}, now, cfg); build the view with the existing helper `movement_view` from realm/api/routes/military.py); POST /villages/{village_id}/trade/exchange body ExchangeBody {give: str, take: str, amount: float} -> the dict returned by market.exchange. Both POST routes are guarded by require_running. Add TradeBody and ExchangeBody to schemas.py, include the router in main.py with prefix '/api'.\nTests tests/api/test_api_market.py (TestClient(create_app(serve_static=False)) + dependency_overrides[get_session] yielding the rollback `s` fixture like tests/api/test_api_smithy.py; world via POST /api/admin/new-world {speed:1, bot_count:0, seed:1, player_name:'ผู้เล่น', tribe:'stonehold'}; marketplace level 2 Building at slot 22 of the human village A and a second human village B at (7, 0) inserted directly with `s` (Village row + Buildings from realm.core.slots.initial_buildings('4-4-4-6', cfg))): GET market -> {'level': 2, 'capacity': 1000.0, 'fee': 0.1, 'merchant_speed': 16.0}; POST trade/send {to_village_id: B.id, wood: 300, iron: 200} -> 200 MovementView with mission 'trade', direction 'out', arrive 1575 s after departure (7/16*3600), and A's stock reduced; sending with 1001 total -> 400 INVALID_UNITS; destination = A -> 400 INVALID_TARGET; unknown destination -> 404; POST trade/exchange {give:'wood', take:'iron', amount:100} -> 200 {'gave': 100, 'received': 90, 'fee': 10}; same resource -> 400 INVALID_TARGET; world status 'ended' -> 409 WORLD_ENDED for both POSTs while GET market still 200; village without marketplace: GET market level 0 and exchange -> 400 REQUIREMENTS_NOT_MET.\n== Web ==\n(1) web/js/views/slotpanel.js `openSlotPanel`: when the slot's current building type is 'marketplace' append (after the other sections) a market section built by a new helper function `appendMarket(ctx, sheet)`: fetch `api.get('/villages/' + ctx.villageId + '/market')`; heading 'ส่งทรัพยากร' with the text 'ความจุต่อเที่ยว <fmtNum(capacity)>'; a <select> of destination villages = ctx.state.villages except the current village (option text = name; when there are none show the muted text 'ไม่มีหมู่บ้านปลายทาง' and skip the form); four number inputs (min 0) labelled ไม้ หิน เหล็ก อาหาร; a primary button 'ส่ง' -> api.post('/villages/' + ctx.villageId + '/trade/send', {to_village_id, wood, stone, iron, food}), ctx.toast('ส่งทรัพยากรแล้ว'), await ctx.refresh(); ApiError -> ctx.toast(err.message, true). Second block heading 'แลกทรัพยากร': two <select> (give, take; options ไม้ หิน เหล็ก อาหาร with values wood, stone, iron, food), a number input amount (min 1), a text line 'ได้รับ <floor(amount*(1-fee))>' updated on input, and a button 'แลก' -> api.post('/villages/' + ctx.villageId + '/trade/exchange', {give, take, amount}), ctx.toast('แลกทรัพยากรแล้ว'), await ctx.refresh(). A failing market fetch must not break the rest of the panel (ignore the error). (2) web/js/views/village.js and web/js/views/rally.js: add the entry `trade: 'ขนส่งทรัพยากร'` to the MISSION_LABELS object (so shipments in the movements list show a label).",
+  "notes": "- Thai strings: use ONLY these exact strings (copy letter by letter; proofread): 'ส่งทรัพยากร', 'ความจุต่อเที่ยว', 'ไม่มีหมู่บ้านปลายทาง', 'ส่ง', 'ส่งทรัพยากรแล้ว', 'แลกทรัพยากร', 'แลก', 'ได้รับ', 'แลกทรัพยากรแล้ว', 'ขนส่งทรัพยากร', and the resource words ไม้ หิน เหล็ก อาหาร. Do not retype any other Thai in the existing files.\n- Services: realm.services.market (market_info, send_resources, exchange). Real columns only in tests.\n- Keep the existing slot panel behaviours (building/upgrade, training, smithy) untouched.\n- Run the test_cmd (pytest + node --check) and fix failures."
+}

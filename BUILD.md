@@ -301,6 +301,11 @@ oasis:                             # oases, wild animals and their bonus (T23)
     rat:    {name_th: หนูป่า, def_inf: 25, def_cav: 20, min: 8, max: 20}
     spider: {name_th: แมงมุมยักษ์, def_inf: 40, def_cav: 60, min: 4, max: 12}
     boar:   {name_th: หมูป่า, def_inf: 60, def_cav: 40, min: 2, max: 8}
+
+market:                            # marketplace trade (T25)
+  merchant_speed: 16               # tiles per hour at 1x for resource shipments
+  capacity_per_level: 500          # total resources per shipment = market level x this
+  npc_fee: 0.10                    # fee when exchanging resources with the NPC market (1:1 minus fee)
 ```
 
 ### 5.2 `buildings.yaml`

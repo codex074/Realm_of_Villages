@@ -68,6 +68,7 @@ class Mission(StrEnum):
     REINFORCE = "reinforce"
     SETTLE = "settle"
     RETURN = "return"
+    TRADE = "trade"
 
 
 class EventType(StrEnum):

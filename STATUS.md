@@ -39,11 +39,16 @@
 | T22 | merged | 2 | a=Claude (table+migration+config), b,c=Qwen รอบแรกผ่านไม่ต้องแก้ (Edit จุดเล็ก → ข้อความไทยไม่เพี้ยน); ตัวเลข balance upgrades เป็นค่าที่ Claude ตั้งเอง รอผู้ใช้ทบทวน |
 | T23 | merged | 2 | a,b=Qwen รอบแรกผ่าน; Claude แก้ compute_rates ให้ใช้ query เดียวแทน 4 query (hot path), c=Claude ทำเอง (map panel); ตัวเลขสัตว์/โบนัสเป็นค่าที่ Claude ตั้งเอง รอทบทวน |
 | T24 | in-review | 2 | โค้ด expand/conquer/defend merged (Qwen a รอบแรก, b สองรอบ); เกณฑ์ sim 20 วัน@1x ยังไม่ผ่านตามตัวอักษร: นักขยาย 1.6 หมู่บ้าน (ต้อง ≥3), ขุนศึกยึดเมือง 0, ผู้นำ 0 เพราะเศรษฐกิจ/แต้มวัฒนธรรมโตช้า (CP 20 วัน ≈ 2.4–4k ต้องใช้ 8000 สำหรับหมู่บ้านที่ 3; ผู้นำ 1 ตัว 7000/6000/7000/5000 + วัง L15); กำลังวัดที่ speed 3 (= 60 วัน@1x) ก่อนตัดสินใจ balance |
-| T25 | todo | 0 | market |
+| T25 | merged | 3 | a รอบแรกผ่าน; b สองรอบ; Claude แก้ไทยเพี้ยน (ส่่ง, ได้ร่ับ) ; ทดสอบ test ล้มสุ่ม 1 ครั้งเกิดจากผมรัน pytest ซ้อนกับ wrapper ของ Qwen บน DB เดียวกัน (อย่าทำ) |
 | T26 | todo | 0 | endgame |
 | T08 | merged | 1 | Claude แก้ healthcheck (ขาด "CMD"); build+up จริงผ่าน: migrate, เว็บ/API/WS ผ่าน Caddy :8080, engine ทำงาน, backup.sh ใช้ได้ |
 
 สถานะที่ใช้: todo · delegated · in-review · merged · blocked · claude-fallback
+
+## งานค้างที่ผู้ใช้สั่งไว้
+- UI สไตล์ยุคกลางแฟนตาซีวาดมือ ทำทั้งชุดหลังจบ Phase 2 (รวมหน้า "วิธีเล่น") — ดู memory ui-polish-plan
+- แจ้งเตือนผ่าน ./scripts/notify.sh ทุก task ที่ merge (CLAUDE.md 5.8)
+- T24: เกณฑ์ sim 20 วัน@1x ยังไม่ผ่าน (รอผล speed 3 แล้วเสนอปรับ balance ให้ผู้ใช้ตัดสิน)
 
 ## ด่าน
 - [ ] G1
@@ -60,6 +65,8 @@
 - ระวัง: test ของ Qwen อาจ "ตั้ง attribute ที่ไม่มีใน model" แล้วผ่านทั้งที่ของจริงพัง (เจอใน T16a) -> ใส่ใน notes ให้ test ตั้งค่าผ่านคอลัมน์จริงเท่านั้น และรีวิวว่าฟิลด์ที่โค้ดอ่านมีใน models.py จริง
 - ระวัง: Qwen พิมพ์คำไทยผิดเหมือนกันทั้งในโค้ดและ test ทำให้ test ผ่านทั้งที่ผิด -> เพิ่ม KNOWN_BAD ใน check_thai.py และอ่านสตริงไทยทุกครั้ง
 - Qwen ลืม "CMD" ใน healthcheck.test ของ compose; test_cmd ที่ใช้ python ต้องเรียกผ่าน `uv run` (python3 ระบบเป็น 3.9 ไม่มี yaml)
+- ห้าม commit/รัน pytest บน DB เดียวกันระหว่างที่ Qwen กำลังรันอยู่ (ใช้ worktree + DB แยก: scripts/wt.sh)
+- เร่งความเร็ว (2026-10-07): โหลด tiles ด้วย COPY (create_world 0.8s -> 0.05s, ชุด test 201s -> 62s)
 - วิธีกันข้อความไทยเพี้ยน: ให้ Qwen สร้างไฟล์ใหม่ และใช้ Edit จุดเล็กกับไฟล์เดิม ห้าม Write ทับไฟล์ที่มีสตริงไทย (ใช้ได้ผลใน T21)
 - Qwen ใส่ "บ่าน" แทน "บ้าน", "เปลี่ี่ยน", "ท่ี" ซ้ำๆ: ใส่ในโจทย์ให้คัดลอกสตริงไทยตามที่ระบุเป๊ะ และรัน scripts/check_thai.py + อ่านทวนทุกครั้ง
 - Qwen สลับ/พิมพ์ตัวอักษรไทยผิดได้ (เช่น "อับดับ" แทน "อันดับ") ที่ regex จับไม่ได้ ต้องอ่านสตริงไทยทุกตัวเอง

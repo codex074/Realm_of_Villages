@@ -1,10 +1,11 @@
 """World lifecycle services: creation, current world, pause/resume (BUILD.md 8.8)."""
 
+import json
 import math
 import random
 from datetime import datetime, timedelta
 
-from sqlalchemy import insert, select, update
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from realm.core import movement, worldgen
@@ -35,6 +36,22 @@ def current_world(s: Session) -> World:
 def world_now(world: World, real_now: datetime) -> datetime:
     """Current game time of a world (frozen while paused)."""
     return game_now(real_now, world.paused_at, world.paused_total_s)
+
+
+def _copy_tiles(
+    s: Session, world_id: int, seed: int, tiles: list[worldgen.TileSpec], cfg: GameConfig
+) -> None:
+    """Bulk-load the tile map with COPY (an order of magnitude faster than INSERT batches)."""
+    raw = s.connection().connection.driver_connection
+    sql = "COPY tiles (world_id, x, y, kind, layout, oasis_type, animals) FROM STDIN"
+    with raw.cursor() as cur, cur.copy(sql) as copy:
+        for t in tiles:
+            animals = (
+                json.dumps(worldgen.oasis_animals(seed, t.x, t.y, cfg))
+                if t.kind == TileKind.OASIS
+                else None
+            )
+            copy.write_row((world_id, t.x, t.y, t.kind.value, t.layout, t.oasis_type, animals))
 
 
 def create_world(
@@ -73,25 +90,7 @@ def create_world(
     s.flush()
 
     tiles = worldgen.generate_tiles(seed, cfg)
-    s.execute(
-        insert(Tile),
-        [
-            {
-                "world_id": world.id,
-                "x": t.x,
-                "y": t.y,
-                "kind": t.kind.value,
-                "layout": t.layout,
-                "oasis_type": t.oasis_type,
-                "animals": (
-                    worldgen.oasis_animals(seed, t.x, t.y, cfg)
-                    if t.kind == TileKind.OASIS
-                    else None
-                ),
-            }
-            for t in tiles
-        ],
-    )
+    _copy_tiles(s, world.id, seed, tiles, cfg)
     s.flush()
     tiles_by_pos: dict[tuple[int, int], worldgen.TileSpec] = {(t.x, t.y): t for t in tiles}
 
