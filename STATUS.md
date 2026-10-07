@@ -29,7 +29,7 @@
 | T14 | merged | 1 | ผ่านรอบแรก ไม่ต้องแก้; ข้อความไทยถูกครบ; ป้องกัน starvation event วนไม่รู้จบแล้ว |
 | T15a | merged | 1 | ผ่านรอบแรก ไม่ต้องแก้ (277 tests) |
 | T15b | merged | 1 | Claude แก้คำไทย 3 จุด (มีย, สุม, เวลาถิง); โครงสร้างถูก |
-| T15c | todo | 0 | web: reports + ranking + center training + app badge |
+| T15c | merged | 1 | ผ่านรอบแรก ข้อความไทยถูกครบ; ทดสอบในเบราว์เซอร์จริง: ปล้นสำเร็จ (loot 500x4), รายงานสองฝ่าย, badge, แผงฝึกทหาร ทำงานถูก |
 | T08 | merged | 1 | Claude แก้ healthcheck (ขาด "CMD"); build+up จริงผ่าน: migrate, เว็บ/API/WS ผ่าน Caddy :8080, engine ทำงาน, backup.sh ใช้ได้ |
 
 สถานะที่ใช้: todo · delegated · in-review · merged · blocked · claude-fallback
