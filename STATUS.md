@@ -19,6 +19,8 @@
 | T07a | merged | 1 | JS ถูกต้อง; Claude แก้คำไทยผิด 2 จุด (แผนท่ี, อับดับ) |
 | T07b | merged | 1 | Claude แก้ 2 จุดใน app.js (interval ซ้ำ, villageId ตอนไม่มี id); ทดสอบในเบราว์เซอร์จริงผ่าน |
 | T07c | merged | 1 | Claude แก้คำไทยผิด ~8 จุด + bug container ของ slot panel + null guard ใน app.js; ทดสอบในเบราว์เซอร์จริงผ่าน (desktop+mobile) |
+| T10a | merged | 1 | worldgen ถูกต้อง ผ่านรอบแรก |
+| T10b | merged | 1 | Claude แก้ "บ่าน" ใน worlds.py+test (Qwen พิมพ์ผิดทั้งโค้ดและ test พร้อมกัน!) และเปลี่ยนชื่อ bot ให้สุ่มจริง |
 | T08 | merged | 1 | Claude แก้ healthcheck (ขาด "CMD"); build+up จริงผ่าน: migrate, เว็บ/API/WS ผ่าน Caddy :8080, engine ทำงาน, backup.sh ใช้ได้ |
 
 สถานะที่ใช้: todo · delegated · in-review · merged · blocked · claude-fallback
@@ -34,6 +36,7 @@
 ## บทเรียนจาก Qwen (ใส่ใน notes ของ task ถัดไป)
 - ต้องเรียก Qwen ด้วย env สะอาด (wrapper ทำให้แล้ว) ไม่งั้น "Not logged in"
 - JSONB server_default ต้องเป็น text("'{}'::jsonb") ไม่ใช่สตริง "{}::jsonb" (Qwen พลาดใน T03a)
+- ระวัง: Qwen พิมพ์คำไทยผิดเหมือนกันทั้งในโค้ดและ test ทำให้ test ผ่านทั้งที่ผิด -> เพิ่ม KNOWN_BAD ใน check_thai.py และอ่านสตริงไทยทุกครั้ง
 - Qwen ลืม "CMD" ใน healthcheck.test ของ compose; test_cmd ที่ใช้ python ต้องเรียกผ่าน `uv run` (python3 ระบบเป็น 3.9 ไม่มี yaml)
 - Qwen ใส่ "บ่าน" แทน "บ้าน", "เปลี่ี่ยน", "ท่ี" ซ้ำๆ: ใส่ในโจทย์ให้คัดลอกสตริงไทยตามที่ระบุเป๊ะ และรัน scripts/check_thai.py + อ่านทวนทุกครั้ง
 - Qwen สลับ/พิมพ์ตัวอักษรไทยผิดได้ (เช่น "อับดับ" แทน "อันดับ") ที่ regex จับไม่ได้ ต้องอ่านสตริงไทยทุกตัวเอง
