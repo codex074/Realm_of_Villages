@@ -84,6 +84,13 @@ function fillInfo(panel, ctx, tile, center) {
     );
     panel.append(btn);
   }
+  if (!v && tile.kind === 'valley') {
+    const settleBtn = h('button', { class: 'btn' }, 'ตั้งหมู่บ้านที่นี่');
+    settleBtn.addEventListener('click', () =>
+      ctx.navigate(`#/rally/${ctx.villageId}?x=${tile.x}&y=${tile.y}&mission=settle`),
+    );
+    panel.append(settleBtn);
+  }
 }
 
 // Render the map page into el.

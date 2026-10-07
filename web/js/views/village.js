@@ -52,6 +52,14 @@ function ratesRow(ctx) {
   );
 }
 
+// Culture points of the player and the amount needed for the next village.
+function cultureRow(ctx) {
+  const player = (ctx.state && ctx.state.player) || {};
+  const points = fmtNum(player.culture_points ?? 0);
+  const next = player.culture_next == null ? 'สูงสุดแล้ว' : fmtNum(player.culture_next);
+  return h('div', { class: 'rates-row' }, `แต้มวัฒนธรรม: ${points} / ${next}`);
+}
+
 // One field slot cell (slots 1..18).
 function fieldCell(el, ctx, b) {
   const meta = (ctx.meta.buildings || {})[b.type] || {};
@@ -123,6 +131,7 @@ export async function render(el, ctx) {
   el.append(
     heading(ctx),
     ratesRow(ctx),
+    cultureRow(ctx),
     h('div', { class: 'panel' }, grid),
     queuePanel(ctx),
     troopsPanel(ctx),

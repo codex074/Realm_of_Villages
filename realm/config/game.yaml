@@ -45,6 +45,7 @@ combat:
   chief_loyalty_max: 30
   loyalty_regen_per_palace_level: 1.0   # ต่อชั่วโมงที่ 1x
   scout_defense_ratio: 1.0
+  conquest_loyalty: 25.0               # loyalty of a village right after it is conquered
 
 culture:
   # แต้มสะสมขั้นต่ำเพื่อมีหมู่บ้านที่ n (index 0 = หมู่บ้านแรก)

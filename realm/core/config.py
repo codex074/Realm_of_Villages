@@ -64,6 +64,7 @@ class CombatSection(_Model):
     chief_loyalty_max: float
     loyalty_regen_per_palace_level: float
     scout_defense_ratio: float
+    conquest_loyalty: float
 
 
 class CultureSection(_Model):

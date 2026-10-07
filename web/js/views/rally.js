@@ -120,7 +120,12 @@ export async function render(el, ctx, params) {
     h('option', { value: 'raid' }, 'ปล้น'),
     h('option', { value: 'scout' }, 'สอดแนม'),
     h('option', { value: 'reinforce' }, 'ส่งทัพเสริม'),
+    h('option', { value: 'settle' }, 'ตั้งหมู่บ้านใหม่'),
   );
+  const wantedMission = params.query.get('mission');
+  if (wantedMission && [...mission.options].some((o) => o.value === wantedMission)) {
+    mission.value = wantedMission;
+  }
   const xInput = h('input', {
     type: 'number',
     value: params.query.get('x') ?? '',
