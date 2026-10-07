@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from realm.api import ws
+from realm.api.guard import GuardMiddleware
 from realm.api.routes import (
     admin,
     alliances,
@@ -59,6 +60,7 @@ async def lifespan(app: FastAPI):
 def create_app(serve_static: bool = True) -> FastAPI:
     """Build the FastAPI app with the /api routers and optional static web mount."""
     app = FastAPI(title="Realm of Villages", lifespan=lifespan)
+    app.add_middleware(GuardMiddleware)
 
     @app.exception_handler(GameError)
     async def game_error_handler(request: Request, exc: GameError) -> JSONResponse:

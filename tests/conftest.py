@@ -78,3 +78,13 @@ def cfg() -> Any:
 def t0() -> datetime:
     """A fixed timezone-aware UTC timestamp used as a test reference time."""
     return datetime(2026, 1, 1, tzinfo=UTC)
+
+
+@pytest.fixture(autouse=True)
+def _reset_api_guard() -> Any:
+    """Fresh rate limiter per test; duplicate guard off (window 0) unless a test sets its own."""
+    from realm.api import guard
+
+    guard.limiter = guard.RateLimiter()
+    guard.duplicates = guard.DuplicateGuard(window_s=0.0)
+    yield
