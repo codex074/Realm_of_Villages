@@ -34,7 +34,7 @@
 | T16b | merged | 1 | ผ่านรอบแรก ไม่ต้องแก้ (wrapper หยุด exit 4 เพราะ Qwen เพิ่ม tests/bot/__init__.py กันชื่อ test_worker ซ้ำ ชอบธรรม; 320 tests ผ่าน) |
 | T17 | merged | 1 | Qwen เขียน simulator แต่ session ค้างเกิน 30 นาที (test ช้า ~114s/รอบ); Claude แก้เอง: brain ข้ามโมดูลสร้างเมื่อคิวเต็ม + cap ความล้มเหลวต่อชนิด (เร็วขึ้น 3 เท่า), บั๊ก KeyError spearman ใน modules.training ที่ simulator เจอ (678 ครั้ง), เรียง query ตาม slot/id ให้ deterministic, test ปรับเป็น speed 1 (7s) |
 | T20a | merged | 1 | logic ถูก; Qwen พิมพ์ข้อความไทยเดิมใน military.py เพี้ยนไปด้วย (บ่าน/น้ี/ตั้้ง ~15 จุด) Claude แก้ทั้งหมดแล้ว |
-| T20b | todo | 0 | web: settle option + culture display |
+| T20b | merged | 0 | Claude ทำเอง (แก้เล็ก 3 ไฟล์เว็บ); เพิ่ม config combat.conquest_loyalty สำหรับ T21 |
 | T08 | merged | 1 | Claude แก้ healthcheck (ขาด "CMD"); build+up จริงผ่าน: migrate, เว็บ/API/WS ผ่าน Caddy :8080, engine ทำงาน, backup.sh ใช้ได้ |
 
 สถานะที่ใช้: todo · delegated · in-review · merged · blocked · claude-fallback
