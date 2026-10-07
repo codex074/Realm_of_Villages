@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "realm-auth",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["REALM_DATABASE_URL=postgresql+psycopg://realm_test:realm_test@localhost:5433/realm_web", "REALM_AUTH_REQUIRED=true", "REALM_API_HOST=127.0.0.1", "REALM_API_PORT=8765", "uv", "run", "realm", "api"],
+      "port": 8765
+    }
+  ]
+}

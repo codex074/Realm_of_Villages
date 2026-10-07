@@ -34,6 +34,7 @@ async function request(method, path, body) {
     } catch {
       // Non-JSON error body: keep the generic message.
     }
+    if (res.status === 401 && code === 'UNAUTHENTICATED') window.dispatchEvent(new Event('auth-required'));
     throw new ApiError(code, message, res.status);
   }
   if (res.status === 204) return null;

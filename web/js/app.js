@@ -26,7 +26,13 @@ const ROUTES = [
   { pattern: ['ranking'], view: 'ranking' },
   { pattern: ['rally', ':vid'], view: 'rally' },
   { pattern: ['help'], view: 'help' },
+  { pattern: ['login'], view: 'login' },
+  { pattern: ['join'], view: 'join' },
+  { pattern: ['alliance'], view: 'alliance' },
 ];
+
+// Views that work without a loaded game state (login, join and new-world forms).
+const STANDALONE_VIEWS = new Set(['login', 'join', 'newgame']);
 
 // ---- DOM refs ----
 const viewEl = document.getElementById('view');
@@ -34,11 +40,17 @@ const clockEl = document.getElementById('clock');
 const pauseBtn = document.getElementById('pause-btn');
 const villageSelect = document.getElementById('village-select');
 const navLinks = Array.from(document.querySelectorAll('#bottomnav .nav-link'));
+const accountBox = document.getElementById('account-box');
+const accountName = document.getElementById('account-name');
+const logoutBtn = document.getElementById('logout-btn');
+const allianceLink = document.getElementById('nav-alliance');
 const toastEl = document.getElementById('toast');
 const resEls = Object.fromEntries(RES_KEYS.map((k) => [k, document.getElementById(`res-${k}`)]));
 
 // ---- App state ----
 let meta = null;
+let me = null; // GET /auth/me: { auth_required, account, player }
+let started = false;
 let state = null;
 let village = null;
 let villageId = null;
@@ -102,6 +114,10 @@ async function renderRoute() {
     navigate('#/');
     return;
   }
+  if (me && me.auth_required && !me.account && route.view !== 'login') {
+    navigate('#/login');
+    return;
+  }
   if (currentCleanup) {
     try {
       currentCleanup();
@@ -111,7 +127,12 @@ async function renderRoute() {
     currentCleanup = null;
   }
   try {
-    await ensureVillage();
+    if (STANDALONE_VIEWS.has(route.view)) {
+      village = null;
+      villageId = null;
+    } else {
+      await ensureVillage();
+    }
   } catch (err) {
     if (err instanceof ApiError) toast(err.message, true);
     return;
@@ -145,6 +166,9 @@ const ctx = {
   get meta() {
     return meta;
   },
+  get me() {
+    return me;
+  },
   get state() {
     return state;
   },
@@ -157,6 +181,7 @@ const ctx = {
   toast,
   refresh,
   navigate,
+  start: () => init(),
 };
 
 // ---- Toast ----
@@ -255,6 +280,7 @@ function updateVillageSelect() {
 
 // Update pause button, village select and bottom nav.
 function updateTopbar() {
+  updateAccountUi();
   updatePauseBtn();
   updateVillageSelect();
   updateNav();
@@ -288,6 +314,8 @@ function navTarget(i, id) {
       return 'reports';
     case 4:
       return 'ranking';
+    case 5:
+      return 'alliance';
     default:
       return '';
   }
@@ -305,6 +333,8 @@ function navMatches(i, path, id) {
       return path === 'reports' || path.startsWith('reports/');
     case 4:
       return path === 'ranking';
+    case 5:
+      return path === 'alliance';
     default:
       return false;
   }
@@ -369,24 +399,59 @@ onChanged((msg) => {
 
 // ---- Init ----
 
+// Show the account box, the alliance tab and the pause button according to the login mode.
+function updateAccountUi() {
+  const auth = !!(me && me.auth_required);
+  accountBox.hidden = !(auth && me.account);
+  accountName.textContent = me && me.account ? me.account.username : '';
+  allianceLink.hidden = !(auth && me.account && state);
+  // Only admins may pause in multiplayer mode.
+  pauseBtn.hidden = auth && !(me.account && me.account.is_admin);
+}
+
+// Load /auth/me; on failure assume single-player mode.
+async function loadMe() {
+  try {
+    me = await api.get('/auth/me');
+  } catch {
+    me = { auth_required: false, account: null, player: null };
+  }
+  updateAccountUi();
+}
+
 async function init() {
-  setInterval(tickResources, 1000);
-  setInterval(tickClock, 1000);
-  setInterval(tickCountdowns, 1000);
+  if (!started) {
+    started = true;
+    setInterval(tickResources, 1000);
+    setInterval(tickClock, 1000);
+    setInterval(tickCountdowns, 1000);
+  }
   try {
     meta = await api.get('/meta');
   } catch (err) {
     if (err instanceof ApiError) toast(err.message, true);
     return;
   }
+  await loadMe();
+  if (me.auth_required && !me.account) {
+    state = null;
+    if (location.hash !== '#/login') navigate('#/login');
+    else renderRoute();
+    return;
+  }
   try {
     state = await api.get('/state');
   } catch (err) {
+    state = null;
     if (err instanceof ApiError && err.status === 404) {
-      if (location.hash !== '#/new') navigate('#/new');
+      // No player yet: join the running world, or (admin / single-player) create one.
+      const joining = me.auth_required && err.code === 'NO_PLAYER';
+      const target = joining || (me.auth_required && !me.account.is_admin) ? '#/join' : '#/new';
+      if (location.hash !== target) navigate(target);
       else renderRoute();
       return;
     }
+    if (err instanceof ApiError && err.status === 401) return;
     if (err instanceof ApiError) toast(err.message, true);
     return;
   }
@@ -394,6 +459,29 @@ async function init() {
   updateTopbar();
   await renderRoute();
 }
+
+// Session expired or missing: back to the login page.
+window.addEventListener('auth-required', () => {
+  if (me && me.auth_required) {
+    me.account = null;
+    updateAccountUi();
+  }
+  state = null;
+  if (location.hash !== '#/login') navigate('#/login');
+});
+
+logoutBtn.addEventListener('click', async () => {
+  try {
+    await api.post('/auth/logout');
+  } catch {
+    // Ignore: the cookie is cleared or already invalid.
+  }
+  state = null;
+  village = null;
+  villageId = null;
+  await loadMe();
+  navigate('#/login');
+});
 
 pauseBtn.addEventListener('click', onTogglePause);
 villageSelect.addEventListener('change', () => navigate(`#/v/${villageSelect.value}`));
