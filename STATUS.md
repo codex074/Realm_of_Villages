@@ -46,7 +46,8 @@
 | T30a | merged | 1 | Phase 3: accounts/sessions/auth API/get_player ตาม session; Claude แก้ไทยเพี้ยน 4 ข้อความ + แก้บั๊ก wt.sh (ชื่อ DB ตัวพิมพ์ใหญ่ทำให้ test ถูก skip เงียบ ต้องดู "skipped" ในผล pytest ทุกครั้ง) |
 | T30b | merged | 1 | join_world, admin เฉพาะ admin, pause ปิดเมื่อมนุษย์ >1; ผ่านรอบแรก ไม่ต้องแก้ |
 | T31a | merged | 1 | alliances service; logic ถูก Claude แก้ไทยเพี้ยน 5 ข้อความ |
-| T31b | delegated | 1 | alliance API |
+| T31b | merged | 1 | alliance API; Claude จำกัด limit แชท 1..200 + แก้ไทยใน test 2 จุด |
+| T32a | merged | 0 | Claude ทำเอง: WS กรองตามบัญชีในโหมด auth (TTL cache 5 วิ กัน stale เมื่อมีคนเข้าโลกใหม่) |
 
 สถานะที่ใช้: todo · delegated · in-review · merged · blocked · claude-fallback
 
