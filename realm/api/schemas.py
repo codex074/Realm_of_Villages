@@ -24,3 +24,20 @@ class NewWorldBody(BaseModel):
     seed: int | None = None
     speed: int = 1
     bot_count: int = 30
+
+
+class TrainBody(BaseModel):
+    """Body of POST /api/villages/{id}/train."""
+
+    unit: str
+    count: int
+
+
+class SendBody(BaseModel):
+    """Body of POST /api/villages/{id}/send and /send/preview."""
+
+    to_x: int
+    to_y: int
+    mission: str
+    units: dict[str, int]
+    catapult_target: str | None = None

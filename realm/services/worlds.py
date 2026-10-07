@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import insert, select, update
 from sqlalchemy.orm import Session
 
-from realm.core import worldgen
+from realm.core import movement, worldgen
 from realm.core.clock import game_now
 from realm.core.config import GameConfig, ResAmount
 from realm.core.names import BOT_NAMES
@@ -15,8 +15,10 @@ from realm.core.types import EventType
 from realm.db.models import BotProfile, Building, Player, Tile, Village, World
 from realm.services import events, notify, ranking, reports
 from realm.services.errors import INVALID_TARGET, NOT_FOUND, GameError
+from realm.services.views import Coord, MapTile, MapView
 
 VALID_SPEEDS = (1, 3, 5, 10)
+INVALID_RADIUS_TH = "รัศมีแผนที่ไม่ถูกต้อง"
 
 
 def current_world(s: Session) -> World:
@@ -253,3 +255,87 @@ def end_round(s: Session, world_id: int, now: datetime, cfg: GameConfig) -> None
         )
     notify.notify(s, world_id, [row.player_id for row in rows], "round_end")
     s.flush()
+
+
+def get_map(
+    s: Session,
+    world_id: int,
+    player_id: int,
+    cx: int,
+    cy: int,
+    r: int,
+    cfg: GameConfig,
+) -> MapView:
+    """The map area of (2r+1) x (2r+1) tiles around a torus-wrapped center."""
+    if not 0 <= r <= 10:
+        raise GameError(INVALID_TARGET, INVALID_RADIUS_TH)
+    world = s.get(World, world_id)
+    size = world.size
+    center_x = movement.wrap(cx, size)
+    center_y = movement.wrap(cy, size)
+    positions = [
+        (movement.wrap(center_x + dx, size), movement.wrap(center_y + dy, size))
+        for dy in range(-r, r + 1)
+        for dx in range(-r, r + 1)
+    ]
+    xs = [p[0] for p in positions]
+    ys = [p[1] for p in positions]
+    tiles = list(
+        s.scalars(
+            select(Tile).where(Tile.world_id == world_id, Tile.x.in_(xs), Tile.y.in_(ys))
+        ).all()
+    )
+    villages = list(
+        s.scalars(
+            select(Village).where(
+                Village.world_id == world_id, Village.x.in_(xs), Village.y.in_(ys)
+            )
+        ).all()
+    )
+    players = {
+        p.id: p
+        for p in s.scalars(
+            select(Player).where(Player.id.in_([v.player_id for v in villages]))
+        ).all()
+    }
+    populations: dict[int, int] = {}
+    if villages:
+        rows = s.execute(
+            select(Building.village_id, Building.type, Building.level).where(
+                Building.village_id.in_([v.id for v in villages])
+            )
+        ).all()
+        for village_id, btype, level in rows:
+            populations[village_id] = (
+                populations.get(village_id, 0) + cfg.buildings[btype].pop_per_level * level
+            )
+    villages_by_pos = {(v.x, v.y): v for v in villages}
+    tiles_by_pos = {(row.x, row.y): row for row in tiles}
+    out_tiles: list[MapTile] = []
+    for x, y in positions:
+        tile = tiles_by_pos[(x, y)]
+        village = villages_by_pos.get((x, y))
+        village_dict: dict | None = None
+        if village is not None:
+            owner = players[village.player_id]
+            village_dict = {
+                "id": village.id,
+                "name": village.name,
+                "player_id": village.player_id,
+                "player_name": owner.name,
+                "tribe": owner.tribe,
+                "population": populations.get(village.id, 0),
+                "is_mine": village.player_id == player_id,
+                "is_bot": owner.is_bot,
+            }
+        out_tiles.append(
+            MapTile(
+                x=x,
+                y=y,
+                kind=tile.kind if tile is not None else "valley_standard",
+                layout=tile.layout if tile is not None else None,
+                oasis_type=tile.oasis_type if tile is not None else None,
+                village=village_dict,
+            )
+        )
+    return MapView(size=size, center=Coord(x=center_x, y=center_y), radius=r, tiles=out_tiles)

@@ -1,0 +1,32 @@
+{
+  "id": "T15a",
+  "title": "api: phase 1 endpoints (train, send, recall, map, reports, ranking) + get_map",
+  "spec": ["1120-1163", "1165-1218", "1563-1572"],
+  "read": [
+    "realm/api/main.py",
+    "realm/api/deps.py",
+    "realm/api/schemas.py",
+    "realm/api/routes/villages.py",
+    "realm/api/routes/state.py",
+    "realm/services/views.py",
+    "realm/services/military.py",
+    "realm/services/training.py",
+    "realm/services/reports.py",
+    "realm/services/ranking.py",
+    "realm/db/models.py",
+    "tests/api/test_api_phase0.py"
+  ],
+  "write": [
+    "realm/api/main.py",
+    "realm/api/schemas.py",
+    "realm/api/routes/villages.py",
+    "realm/api/routes/military.py",
+    "realm/api/routes/world.py",
+    "realm/api/routes/reports.py",
+    "realm/services/worlds.py",
+    "tests/api/test_api_phase1.py"
+  ],
+  "test_cmd": "uv run pytest tests -q -rs",
+  "criteria": "Add the Phase 1 HTTP endpoints of BUILD.md section 9, all under /api, sync `def` routes with the same dependency style as routes/villages.py (Depends(get_session/get_cfg/get_player/get_now), require_running on every mutating route):\n- GET /api/villages/{id}/train-options -> list[TrainOption] (training.get_train_options)\n- POST /api/villages/{id}/train body {unit:str, count:int} -> TrainingView (training.train; build the view from the returned TrainingQueue row: id, building, unit, count_total, count_done, next_at, finishes_at)\n- POST /api/villages/{id}/send/preview body SendBody -> SendPreview (military.preview_send; NOT guarded by require_running)\n- POST /api/villages/{id}/send body SendBody -> MovementView (military.send_troops; direction 'out', hostile False, from_village = villages.village_brief of the sender, to = Coord(to_x,to_y of the movement), to_village_name = name of the village at to_village_id or None, units = movement units)\n- POST /api/troops/{troop_id}/recall -> MovementView (military.recall_reinforcement, same view builder)\n- GET /api/map?cx=0&cy=0&r=7 -> MapView (worlds.get_map); r must be 0..10 else GameError INVALID_TARGET 'รัศมีแผนที่ไม่ถูกต้อง' (HTTP 400); defaults cx=0, cy=0, r=7\n- GET /api/reports?before_id= -> list[ReportSummary] (reports.list_reports for the human player; optional before_id; limit 50)\n- GET /api/reports/{id} -> ReportDetail (reports.get_report, marks read)\n- GET /api/ranking -> list[RankingRow] (ranking.get_ranking for the current world)\nschemas.py: add `SendBody(to_x:int, to_y:int, mission:str, units:dict[str,int], catapult_target:str|None=None)` and `TrainBody(unit:str, count:int)`; an unknown mission string (not a Mission value) -> GameError INVALID_TARGET 'ภารกิจไม่ถูกต้อง'. realm/services/worlds.py: APPEND `get_map(s, world_id, player_id, cx, cy, r, cfg) -> MapView` (do not modify existing functions): center = Coord(wrap(cx), wrap(cy)) using realm.core.movement.wrap with the world size; tiles = every (x, y) in the (2r+1) x (2r+1) square around the center with torus wrapping (x/y wrapped with movement.wrap), ordered by y then x; each MapTile has kind, layout, oasis_type from the tiles table and `village` = None or a dict {'id','name','player_id','player_name','tribe','population','is_mine','is_bot'} for the village standing there (population = sum pop_per_level*level over its building rows); use ONE query for the tiles, ONE for the villages in the area (with their players) and ONE grouped query for the buildings of those villages; MapView(size=world.size, center, radius=r, tiles=...). main.py: include the new routers with prefix '/api'.\nTests (tests/api/test_api_phase1.py): TestClient(create_app(serve_static=False)) with dependency_overrides[get_session] yielding the rollback `s` fixture (as in tests/api/test_api_phase0.py); create the world through POST /api/admin/new-world {speed:1, bot_count:2, seed:1, player_name:'ผู้เล่น', tribe:'stonehold'}, then use the `s` session directly to arrange data (barracks Building at slot 20 level 1, rally_point slot 39 level 1, Troop rows, bot protection_until = far past, B's coordinates = (7,0)). Check: train-options returns 9 entries and spearman has missing [] after the barracks exists; POST train 2 spearman -> 200 TrainingView with count_total 2 and resources reduced; unknown unit -> 400 INVALID_UNITS; send/preview raid with 10 light_cavalry to (7,0) -> distance 7.0, travel_time_s 1800.0, errors [] and DB unchanged; protected target -> preview errors non-empty (not an HTTP error); POST send raid -> 200 MovementView (direction 'out', mission 'raid', units {'light_cavalry': 10}, arrive_at 1800 s after the departure); a second send with too many troops -> 400 NO_UNITS; unknown mission -> 400 INVALID_TARGET; POST recall of a reinforcement Troop row (home = my village, location = bot village) -> 200 MovementView, recalling someone else's -> 403 FORBIDDEN, unknown -> 404 NOT_FOUND; GET /api/map r=2 around (0,0) -> 25 tiles, the center tile has a village dict with is_mine True and population 2 and tiles are ordered by y then x; map near the edge cx=50,cy=0,r=2 wraps (x values 48,49,50,-50,-49); r=11 -> 400 INVALID_TARGET; a bot village on the map has is_mine False and is_bot True; GET /api/reports empty list, after inserting reports via reports.create_report newest first, before_id pagination, GET /api/reports/{id} returns data and marks it read (state.unread_reports drops), another player's report -> 403, unknown -> 404; GET /api/ranking returns 3 rows ordered with rank 1..3; with the world status set to 'ended': train, send and recall -> 409 WORLD_ENDED, preview and map/ranking/reports reads still 200.",
+  "notes": "- Existing helper to reuse: villages.village_brief(s, village, cfg). Request bodies live in schemas.py.\n- For `Mission(body.mission)` catch ValueError and raise GameError(INVALID_TARGET, 'ภารกิจไม่ถูกต้อง').\n- MovementView and the other views are in realm/services/views.py; the Movement.units column is a plain dict.\n- Thai strings: use ONLY 'รัศมีแผนที่ไม่ถูกต้อง' and 'ภารกิจไม่ถูกต้อง' (copy letter by letter; proofread). No other Thai.\n- FastAPI query params: `cx: int = 0, cy: int = 0, r: int = 7`, `before_id: int | None = None`.\n- Never commit in services; the API session override handles transactions. Do not edit existing endpoint behaviour.\n- tests/api/test_api_phase0.py must keep passing."
+}
