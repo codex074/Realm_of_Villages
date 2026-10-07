@@ -38,7 +38,7 @@
 | T21 | merged | 1 | ผ่านรอบแรก ไม่ต้องแก้; ข้อความไทยถูกครบเพราะให้ Qwen Edit จุดเล็ก + ไฟล์ใหม่ (conquest.py) แทนเขียนไฟล์ใหญ่ซ้ำ |
 | T22 | merged | 2 | a=Claude (table+migration+config), b,c=Qwen รอบแรกผ่านไม่ต้องแก้ (Edit จุดเล็ก → ข้อความไทยไม่เพี้ยน); ตัวเลข balance upgrades เป็นค่าที่ Claude ตั้งเอง รอผู้ใช้ทบทวน |
 | T23 | merged | 2 | a,b=Qwen รอบแรกผ่าน; Claude แก้ compute_rates ให้ใช้ query เดียวแทน 4 query (hot path), c=Claude ทำเอง (map panel); ตัวเลขสัตว์/โบนัสเป็นค่าที่ Claude ตั้งเอง รอทบทวน |
-| T24 | todo | 0 | bots full |
+| T24 | in-review | 2 | โค้ด expand/conquer/defend merged (Qwen a รอบแรก, b สองรอบ); เกณฑ์ sim 20 วัน@1x ยังไม่ผ่านตามตัวอักษร: นักขยาย 1.6 หมู่บ้าน (ต้อง ≥3), ขุนศึกยึดเมือง 0, ผู้นำ 0 เพราะเศรษฐกิจ/แต้มวัฒนธรรมโตช้า (CP 20 วัน ≈ 2.4–4k ต้องใช้ 8000 สำหรับหมู่บ้านที่ 3; ผู้นำ 1 ตัว 7000/6000/7000/5000 + วัง L15); กำลังวัดที่ speed 3 (= 60 วัน@1x) ก่อนตัดสินใจ balance |
 | T25 | todo | 0 | market |
 | T26 | todo | 0 | endgame |
 | T08 | merged | 1 | Claude แก้ healthcheck (ขาด "CMD"); build+up จริงผ่าน: migrate, เว็บ/API/WS ผ่าน Caddy :8080, engine ทำงาน, backup.sh ใช้ได้ |

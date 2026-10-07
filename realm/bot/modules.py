@@ -2,9 +2,9 @@
 
 import random
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from realm.bot.action import Action
@@ -13,7 +13,17 @@ from realm.core import construction, economy, movement, slots
 from realm.core import units as units_core
 from realm.core.config import GameConfig, PersonalityDef
 from realm.core.types import Res, Units
-from realm.db.models import BotProfile, Building, Player, Troop, Village, World
+from realm.db.models import (
+    BotProfile,
+    Building,
+    Movement,
+    Player,
+    Tile,
+    TrainingQueue,
+    Troop,
+    Village,
+    World,
+)
 from realm.services import villages
 
 
@@ -282,5 +292,321 @@ def raid(ctx: BotContext) -> list[Action]:
             score=3 * min(1, expected / carry),
             params={"to_x": target.x, "to_y": target.y, "units": carry_units},
             module="raid",
+        )
+    ]
+
+
+def _army_units(troops_home: Units, cfg: GameConfig) -> Units:
+    """All home units that may join an attack (no scouts, no settlers)."""
+    return {
+        u: n
+        for u, n in troops_home.items()
+        if n > 0 and cfg.units[u].type != "scout" and u != "settler"
+    }
+
+
+def conquer(ctx: BotContext) -> list[Action]:
+    """Attack the weakest conquerable village with the home army, or train chiefs."""
+    cfg, bot, village = ctx.cfg, ctx.bot, ctx.village
+    if ctx.troops_home.get("chief", 0) >= 1:
+        world = ctx.world
+        candidates = ctx.s.execute(
+            select(Village, Player)
+            .join(Player, Player.id == Village.player_id)
+            .where(Village.world_id == world.id)
+            .order_by(Village.id)
+        ).all()
+        eligible: list[tuple[Village, float]] = []
+        for v, owner in candidates:
+            if v.player_id == bot.id or v.is_capital:
+                continue
+            if owner.protection_until > ctx.now:
+                continue
+            dist = movement.distance(village.x, village.y, v.x, v.y, world.size)
+            if dist > ctx.personality.raid_radius:
+                continue
+            if recent_fails(ctx.memory, str(v.id), ctx.now) >= 2:
+                continue
+            eligible.append((v, dist))
+        if eligible:
+            # ONE grouped query: population of every candidate village.
+            grouped = list(
+                ctx.s.execute(
+                    select(Building.village_id, Building.type, Building.level).where(
+                        Building.village_id.in_([v.id for v, _ in eligible])
+                    )
+                ).all()
+            )
+            by_village: dict[int, list[tuple[str, int]]] = {}
+            for vid, btype, level in grouped:
+                by_village.setdefault(vid, []).append((btype, level))
+            army = _army_units(ctx.troops_home, cfg)
+            attack = sum(cfg.units[u].attack * n for u, n in army.items())
+            best: tuple[float, float, int, Village] | None = None
+            for v, dist in eligible:
+                population = economy.population(by_village.get(v.id, []), cfg)
+                if attack < 400 + 25 * population:
+                    continue
+                key = (v.loyalty, dist, v.id)
+                if best is None or key < best[:3]:
+                    best = (v.loyalty, dist, v.id, v)
+            if best is not None:
+                target = best[3]
+                return [
+                    Action(
+                        kind="attack",
+                        score=3.5,
+                        params={"to_x": target.x, "to_y": target.y, "units": army},
+                        module="conquer",
+                    )
+                ]
+    # No attack produced: train chiefs when everything allows it.
+    if units_core.missing_unit_requirements("chief", ctx.levels, cfg):
+        return []
+    home_chiefs = ctx.s.scalar(
+        select(func.coalesce(func.sum(Troop.count), 0)).where(
+            Troop.home_village_id == village.id, Troop.unit == "chief"
+        )
+    )
+    moving_chiefs = sum(
+        m.units.get("chief", 0)
+        for m in ctx.s.scalars(
+            select(Movement).where(Movement.player_id == bot.id, Movement.status == "moving")
+        ).all()
+    )
+    if (home_chiefs or 0) + moving_chiefs > 0:
+        return []
+    if ctx.s.scalar(
+        select(func.count(TrainingQueue.id)).where(
+            TrainingQueue.village_id == village.id, TrainingQueue.unit == "chief"
+        )
+    ):
+        return []
+    cost = units_core.unit_cost("chief", bot.tribe, cfg)
+    stock = Res(village.wood, village.stone, village.iron, village.food)
+    ratios = [
+        getattr(stock, k) / c
+        for k, c in zip(("wood", "stone", "iron", "food"), cost.to_dict().values(), strict=True)
+        if c > 0
+    ]
+    count = min(2, int(min(ratios))) if ratios else 0
+    if count < 1:
+        return []
+    return [
+        Action(
+            kind="train",
+            score=3.0,
+            params={"unit": "chief", "count": count},
+            module="conquer",
+        )
+    ]
+
+
+def defend(ctx: BotContext) -> list[Action]:
+    """React to an incoming attack/raid: evacuate looters and spend on troops."""
+    cfg, bot, village, world = ctx.cfg, ctx.bot, ctx.village, ctx.world
+    if not cfg.bot_difficulties[ctx.profile.difficulty].defend:
+        return []
+    window = timedelta(seconds=900 / world.speed)
+    incoming = list(
+        ctx.s.scalars(
+            select(Movement).where(
+                Movement.to_village_id == village.id,
+                Movement.status == "moving",
+                Movement.mission.in_(("attack", "raid")),
+                Movement.player_id != bot.id,
+                Movement.arrive_at <= ctx.now + window,
+            )
+        ).all()
+    )
+    if not incoming:
+        return []
+    actions: list[Action] = []
+    # 1) EVACUATE: send the looters to the nearest unprotected enemy village.
+    carriers = {u: n for u, n in ctx.troops_home.items() if n > 0 and cfg.units[u].carry > 0}
+    if carriers:
+        attacker_village_ids = {m.from_village_id for m in incoming}
+        candidates = ctx.s.execute(
+            select(Village, Player)
+            .join(Player, Player.id == Village.player_id)
+            .where(Village.world_id == world.id)
+            .order_by(Village.id)
+        ).all()
+        best: tuple[float, int, Village] | None = None
+        for v, owner in candidates:
+            if v.player_id == bot.id or v.id in attacker_village_ids:
+                continue
+            if owner.protection_until > ctx.now:
+                continue
+            dist = movement.distance(village.x, village.y, v.x, v.y, world.size)
+            if dist > 30:
+                continue
+            key = (dist, v.id)
+            if best is None or key < best[:2]:
+                best = (dist, v.id, v)
+        if best is not None:
+            target = best[2]
+            actions.append(
+                Action(
+                    kind="raid",
+                    score=6.0,
+                    params={"to_x": target.x, "to_y": target.y, "units": carriers},
+                    module="defend",
+                )
+            )
+    # 2) SPEND: train the best trainable unit with the current stock.
+    candidates_units = [
+        u
+        for u in ctx.personality.unit_mix
+        if ctx.levels.get(cfg.units[u].trained_in, 0) >= 1
+        and not units_core.missing_unit_requirements(u, ctx.levels, cfg)
+    ]
+    if not candidates_units:
+        if ctx.levels.get(cfg.units["spearman"].trained_in, 0) >= 1 and not (
+            units_core.missing_unit_requirements("spearman", ctx.levels, cfg)
+        ):
+            candidates_units = ["spearman"]
+        else:
+            return actions
+    weights = [ctx.personality.unit_mix.get(u, 1.0) for u in candidates_units]
+    unit = ctx.rng.choices(candidates_units, weights=weights)[0]
+    cost = units_core.unit_cost(unit, bot.tribe, cfg)
+    stock = Res(village.wood, village.stone, village.iron, village.food)
+    ratios = [
+        getattr(stock, k) / c
+        for k, c in zip(("wood", "stone", "iron", "food"), cost.to_dict().values(), strict=True)
+        if c > 0
+    ]
+    count = int(min(ratios)) if ratios else 0
+    if count >= 1:
+        actions.append(
+            Action(kind="train", score=5.5, params={"unit": unit, "count": count}, module="defend")
+        )
+    return actions
+
+
+def _find_settle_tile(ctx: BotContext) -> tuple[int, int] | None:
+    """Nearest empty valley tile within expand_radius that is far enough from every village."""
+    cfg, world, village = ctx.cfg, ctx.world, ctx.village
+    radius = ctx.personality.expand_radius
+    xs = [movement.wrap(village.x + dx, world.size) for dx in range(-radius, radius + 1)]
+    ys = [movement.wrap(village.y + dy, world.size) for dy in range(-radius, radius + 1)]
+    tiles = list(
+        ctx.s.scalars(
+            select(Tile).where(
+                Tile.world_id == world.id,
+                Tile.kind == "valley",
+                Tile.x.in_(xs),
+                Tile.y.in_(ys),
+            )
+        ).all()
+    )
+    margin = cfg.world.min_village_distance
+    vxs = [
+        movement.wrap(village.x + dx, world.size)
+        for dx in range(-radius - margin, radius + margin + 1)
+    ]
+    vys = [
+        movement.wrap(village.y + dy, world.size)
+        for dy in range(-radius - margin, radius + margin + 1)
+    ]
+    villages_rows = list(
+        ctx.s.scalars(
+            select(Village).where(
+                Village.world_id == world.id, Village.x.in_(vxs), Village.y.in_(vys)
+            )
+        ).all()
+    )
+    settle_targets = {
+        (m.to_x, m.to_y)
+        for m in ctx.s.scalars(
+            select(Movement).where(
+                Movement.world_id == world.id,
+                Movement.mission == "settle",
+                Movement.status == "moving",
+            )
+        ).all()
+    }
+    best: tuple[int, int] | None = None
+    for t in tiles:
+        dist = movement.distance(village.x, village.y, t.x, t.y, world.size)
+        if not 1 <= dist <= radius:
+            continue
+        if (t.x, t.y) in settle_targets:
+            continue
+        if any(movement.distance(t.x, t.y, v.x, v.y, world.size) < margin for v in villages_rows):
+            continue
+        key = (round(dist, 6), t.x, t.y)
+        if best is None or key < best:
+            best = key
+    if best is None:
+        return None
+    return best[1], best[2]
+
+
+def expand(ctx: BotContext) -> list[Action]:
+    """Send settlers to found a new village, or train settlers when they are missing."""
+    cfg, bot, village = ctx.cfg, ctx.bot, ctx.village
+    pending = (
+        ctx.s.scalar(
+            select(func.count(Movement.id)).where(
+                Movement.player_id == bot.id,
+                Movement.mission == "settle",
+                Movement.status == "moving",
+            )
+        )
+        or 0
+    )
+    need = villages.culture_needed_for_next_village(ctx.s, bot, cfg, extra_pending=pending)
+    if need is None or villages.projected_culture(ctx.s, bot, ctx.now, cfg) < need:
+        return []
+    needed = cfg.culture.settlers_needed
+    if ctx.troops_home.get("settler", 0) >= needed:
+        target = _find_settle_tile(ctx)
+        if target is None:
+            return []
+        return [
+            Action(
+                kind="settle",
+                score=4.0,
+                params={"to_x": target[0], "to_y": target[1], "units": {"settler": needed}},
+                module="expand",
+            )
+        ]
+    if units_core.missing_unit_requirements("settler", ctx.levels, cfg):
+        return []
+    if ctx.s.scalar(
+        select(func.count(TrainingQueue.id)).where(
+            TrainingQueue.village_id == village.id, TrainingQueue.unit == "settler"
+        )
+    ):
+        return []
+    home_settlers = ctx.s.scalar(
+        select(func.coalesce(func.sum(Troop.count), 0)).where(
+            Troop.home_village_id == village.id, Troop.unit == "settler"
+        )
+    )
+    moving_settlers = sum(
+        m.units.get("settler", 0)
+        for m in ctx.s.scalars(
+            select(Movement).where(
+                Movement.player_id == bot.id,
+                Movement.mission == "settle",
+                Movement.status == "moving",
+            )
+        ).all()
+    )
+    if home_settlers + moving_settlers >= needed:
+        return []
+    cost = units_core.unit_cost("settler", bot.tribe, cfg).scale(needed)
+    stock = Res(village.wood, village.stone, village.iron, village.food)
+    if not stock.covers(cost):
+        return []
+    return [
+        Action(
+            kind="train",
+            score=3.5,
+            params={"unit": "settler", "count": needed},
+            module="expand",
         )
     ]

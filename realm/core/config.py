@@ -164,6 +164,7 @@ class PersonalityDef(_Model):
     unit_mix: dict[str, float]
     raid_radius: float
     active_from_day: float
+    expand_radius: int = 8
     build_order: list[tuple[str, int]]
 
 

@@ -13,7 +13,7 @@ from realm.services import military, training, villages
 class Action:
     """A single bot decision; execute() calls only realm.services functions."""
 
-    kind: str  # 'build' | 'train' | 'raid'
+    kind: str  # 'build' | 'train' | 'raid' | 'attack' | 'settle'
     score: float
     params: dict = field(default_factory=dict)
     module: str = ""  # name of the producing module
@@ -36,6 +36,31 @@ class Action:
                 self.params["to_x"],
                 self.params["to_y"],
                 Mission.RAID,
+                self.params["units"],
+                now,
+                cfg,
+            )
+        elif self.kind == "attack":
+            military.send_troops(
+                s,
+                bot.id,
+                village.id,
+                self.params["to_x"],
+                self.params["to_y"],
+                Mission.ATTACK,
+                self.params["units"],
+                now,
+                cfg,
+                self.params.get("catapult_target"),
+            )
+        elif self.kind == "settle":
+            military.send_troops(
+                s,
+                bot.id,
+                village.id,
+                self.params["to_x"],
+                self.params["to_y"],
+                Mission.SETTLE,
                 self.params["units"],
                 now,
                 cfg,
