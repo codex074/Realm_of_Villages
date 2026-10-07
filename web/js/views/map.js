@@ -4,6 +4,9 @@
 import { api, ApiError } from '../api.js';
 import { h, clear, icon } from '../dom.js';
 import { art } from './scene.js';
+import { countdown } from '../clock.js';
+import { fmtDuration, fmtNum } from '../format.js';
+import { unitLabel } from '../units.js';
 
 const { el, rect, poly, line, ellipse, text, shadow, pine, tree, bush, rock, mountain, hall, flag, addDefs } = art;
 
@@ -129,6 +132,10 @@ function villageArt(t) {
     g.append(el('g', { transform: `translate(${x} ${y}) scale(0.42)` }, hall({ w: 60, d: 44, h: 30, rh: 22, roof: v.is_bot ? '#7f8f9c' : '#b5543a', roofTex: v.is_bot ? 'slate' : 'tile', wins: 1 })));
   }
   g.append(flag(T * 0.9, T * 0.72, 34, rel.fill));
+  if (v.protected) {
+    g.append(el('path', { d: 'M8 6l9 -4l9 4v7c0 6 -4 10 -9 12c-5 -2 -9 -6 -9 -12z', fill: '#e8f1ff', stroke: '#4a6fa5', 'stroke-width': 1.6 }));
+    g.append(el('path', { d: 'M17 6v15M11 11h12', stroke: '#4a6fa5', 'stroke-width': 1.4, fill: 'none' }));
+  }
   return g;
 }
 
@@ -363,6 +370,7 @@ export async function render(el0, ctx, params) {
       h('div', { class: 'map-facts' },
         h('span', { class: 'map-chip' }, `(${t.x}, ${t.y})`),
         h('span', { class: 'map-chip' }, `ห่าง ${dist(t).toFixed(1)} ช่อง`),
+        v && v.protected ? h('span', { class: 'map-chip' }, '🛡 คุ้มครอง') : null,
         v ? h('span', { class: 'map-chip', style: { borderColor: REL[relation(v)].fill } }, REL[relation(v)].label) : null,
       ),
     );
@@ -385,9 +393,14 @@ export async function render(el0, ctx, params) {
     }
     for (const [k, val] of rows) sheet.append(h('div', { class: 'list-row' }, h('span', { class: 'muted' }, k), h('span', {}, val)));
 
+    if (v && v.protected && !v.is_mine) {
+      sheet.append(h('div', { class: 'map-protected' }, '🛡 อยู่ในช่วงคุ้มครอง โจมตี/ปล้น/สอดแนมไม่ได้อีก ', h('span', { class: 'countdown', 'data-countdown': v.protected_until }, countdown(v.protected_until))));
+    }
     const go = (mission) => ctx.navigate(`#/rally/${ctx.villageId}?x=${t.x}&y=${t.y}${mission ? `&mission=${mission}` : ''}`);
     const actions = h('div', { class: 'map-actions' });
-    const btn = (label2, mission, primary) => h('button', { class: 'btn' + (primary ? ' btn-primary' : ''), type: 'button', onclick: () => go(mission) }, label2);
+    const hostileOff = !!(v && v.protected);
+    const btn = (label2, mission, primary) =>
+      h('button', { class: 'btn' + (primary ? ' btn-primary' : ''), type: 'button', disabled: hostileOff && ['attack', 'raid', 'scout'].includes(mission), onclick: () => go(mission) }, label2);
     if (v && v.is_mine) {
       actions.append(h('button', { class: 'btn btn-primary', type: 'button', onclick: () => ctx.navigate(`#/v/${v.id}`) }, 'เข้าหมู่บ้าน'));
     } else if (v && v.is_ally) {
@@ -400,6 +413,100 @@ export async function render(el0, ctx, params) {
       actions.append(btn('ตั้งหมู่บ้านที่นี่', 'settle', true));
     }
     if (actions.childElementCount) sheet.append(actions);
+    const targetable = (v && !v.is_mine && !v.is_ally) || t.kind === 'oasis';
+    if (targetable) {
+      sheet.append(h('button', { class: 'btn small map-farm-add', type: 'button', onclick: () => farmAdd(t) }, '+ เพิ่มในรายการฟาร์ม'));
+    }
+    if (!(v && v.is_mine)) loadExtras(t);
+  }
+
+  // Travel times from the current village and what we know from our own reports.
+  async function loadExtras(t) {
+    const box = h('div', { class: 'map-extras' }, h('div', { class: 'muted' }, 'กำลังโหลดข้อมูล...'));
+    sheet.append(box);
+    const sel = state.selected;
+    let travel = null;
+    let intel = null;
+    try {
+      [travel, intel] = await Promise.all([
+        api.get(`/villages/${ctx.villageId}/travel?x=${t.x}&y=${t.y}`),
+        t.village || t.kind === 'oasis' || t.kind === 'ruin' ? api.get(`/map/intel?x=${t.x}&y=${t.y}`) : Promise.resolve(null),
+      ]);
+    } catch {
+      // extras are optional
+    }
+    if (state.selected !== sel || !box.isConnected) return;
+    clear(box);
+    if (travel) {
+      const entries = Object.entries(travel.units);
+      box.append(h('div', { class: 'extras-head' }, 'เวลาเดินทางจากหมู่บ้านนี้'));
+      if (!entries.length) box.append(h('div', { class: 'muted' }, 'ไม่มีทหารอยู่ในหมู่บ้าน'));
+      else box.append(h('div', { class: 'extras-units' }, ...entries.map(([u, sec]) => h('span', { class: 'extras-chip' }, unitLabel(ctx, u), ` ${fmtDuration(sec)}`))));
+    }
+    if (intel && intel.last_attack) {
+      const a = intel.last_attack;
+      const loot = Object.entries(a.loot || {}).filter(([, n]) => n > 0);
+      box.append(
+        h('div', { class: 'extras-head' }, a.mission === 'raid' ? 'ปล้นครั้งล่าสุด' : 'โจมตีครั้งล่าสุด',
+          h('a', { href: `#/reports/${a.report_id}`, class: 'extras-link' }, 'ดูรายงาน')),
+        h('div', {}, a.attacker_won ? 'ชนะ' : 'แพ้', loot.length ? ` · ได้ ${loot.map(([k, n]) => `${RES_LABEL[k] ?? k} ${fmtNum(n)}`).join(' ')}` : ''),
+      );
+    }
+    if (intel && intel.last_scout) {
+      const sc = intel.last_scout;
+      const troops = Object.entries(sc.troops || {}).filter(([, n]) => n > 0);
+      box.append(
+        h('div', { class: 'extras-head' }, 'สอดแนมครั้งล่าสุด', h('a', { href: `#/reports/${sc.report_id}`, class: 'extras-link' }, 'ดูรายงาน')),
+        troops.length
+          ? h('div', { class: 'extras-units' }, ...troops.map(([u, n]) => h('span', { class: 'extras-chip' }, unitLabel(ctx, u, ` x${n}`))))
+          : h('div', { class: 'muted' }, 'ไม่พบทหาร'),
+      );
+    }
+  }
+
+  // Add the tile to a farm list (creating the first list when there is none).
+  async function farmAdd(t) {
+    let lists = [];
+    try {
+      lists = await api.get('/farmlists');
+    } catch (err) {
+      if (err instanceof ApiError) ctx.toast(err.message, true);
+      return;
+    }
+    const home2 = lists.filter((l) => l.village_id === ctx.villageId);
+    const listSel = h('select', {}, ...home2.map((l) => h('option', { value: String(l.id) }, l.name)), h('option', { value: 'new' }, '+ รายการใหม่'));
+    const unitKeys = Object.keys(ctx.village.troops_home || {});
+    const allUnits = unitKeys.length ? unitKeys : Object.keys(ctx.meta.units || {});
+    const unitSel = h('select', {}, ...allUnits.map((u) => h('option', { value: u }, (ctx.meta.units || {})[u]?.name_th ?? u)));
+    const count = h('input', { type: 'number', min: '1', value: '5' });
+    const form = h(
+      'form',
+      {
+        class: 'map-farm-form',
+        onsubmit: async (e) => {
+          e.preventDefault();
+          try {
+            let listId = listSel.value;
+            if (listId === 'new') {
+              const created = await api.post('/farmlists', { village_id: ctx.villageId, name: `รายการ ${home2.length + 1}` });
+              listId = created.id;
+            }
+            await api.post(`/farmlists/${listId}/entries`, { x: t.x, y: t.y, units: { [unitSel.value]: Number(count.value) || 1 } });
+            ctx.toast('เพิ่มในรายการฟาร์มแล้ว');
+            form.remove();
+          } catch (err) {
+            if (err instanceof ApiError) ctx.toast(err.message, true);
+          }
+        },
+      },
+      h('div', { class: 'extras-head' }, 'เพิ่มในรายการฟาร์ม (ปล้น)'),
+      h('div', { class: 'market-row' }, h('span', {}, 'รายการ'), listSel),
+      h('div', { class: 'market-row' }, h('span', {}, 'ทหาร'), unitSel, count),
+      h('div', { class: 'market-row' }, h('button', { class: 'btn btn-primary small', type: 'submit' }, 'เพิ่ม'), h('a', { href: '#/farms', class: 'extras-link' }, 'จัดการรายการฟาร์ม')),
+    );
+    sheet.querySelector('.map-farm-form')?.remove();
+    sheet.append(form);
+    form.scrollIntoView({ block: 'nearest' });
   }
 
   // ---- HUD ----
@@ -448,7 +555,7 @@ export async function render(el0, ctx, params) {
     const tab = FIND_TABS.find((x) => x.key === f.kind);
     findPanel.append(
       h('button', { class: 'btn small drawer-close', type: 'button', onclick: () => toggleFind(false) }, 'ปิด'),
-      h('h2', { class: 'panel-heading' }, `ใกล้หมู่บ้าน (${home.x}, ${home.y}) ที่สุด`),
+      h('h2', { class: 'panel-heading' }, 'ค้นหาสิ่งที่ใกล้ที่สุด'),
       h('div', { class: 'find-tabs' }, ...FIND_TABS.map((x) =>
         h('button', { class: 'find-chip' + (x.key === f.kind ? ' active' : ''), type: 'button', onclick: () => { state.find = { kind: x.key, filter: x.filters[0] ? x.filters[0][0] : '' }; drawFind(); } }, x.label))),
     );
@@ -458,8 +565,23 @@ export async function render(el0, ctx, params) {
     }
     const list = h('div', { class: 'find-list' }, h('div', { class: 'muted' }, 'กำลังค้นหา...'));
     findPanel.append(list);
-    const q = new URLSearchParams({ kind: f.kind, from_x: home.x, from_y: home.y, limit: '25' });
+    const myVillages = (ctx.state && ctx.state.villages) || [];
+    const origin = myVillages.find((mv) => mv.id === f.from) || home;
+    if (myVillages.length > 1) {
+      const fromSel = h('select', { onchange: (e) => { state.find = { ...f, from: Number(e.target.value) }; drawFind(); } },
+        ...myVillages.map((mv) => h('option', { value: String(mv.id), selected: mv.x === origin.x && mv.y === origin.y }, `${mv.name} (${mv.x}, ${mv.y})`)));
+      findPanel.insertBefore(h('div', { class: 'market-row' }, h('span', {}, 'นับจาก'), fromSel), list);
+    }
+    if (f.kind === 'village') {
+      const minIn = h('input', { type: 'number', min: '0', placeholder: 'ต่ำสุด', value: f.min ?? '' });
+      const maxIn = h('input', { type: 'number', min: '0', placeholder: 'สูงสุด', value: f.max ?? '' });
+      const apply2 = h('button', { class: 'btn small', type: 'button', onclick: () => { state.find = { ...f, min: minIn.value, max: maxIn.value }; drawFind(); } }, 'กรอง');
+      findPanel.insertBefore(h('div', { class: 'market-row find-pop' }, h('span', {}, 'ประชากร'), minIn, h('span', {}, '–'), maxIn, apply2), list);
+    }
+    const q = new URLSearchParams({ kind: f.kind, from_x: origin.x, from_y: origin.y, limit: '25' });
     if (f.kind === 'village') q.set('who', f.filter || 'all');
+    if (f.kind === 'village' && f.min) q.set('min_pop', f.min);
+    if (f.kind === 'village' && f.max) q.set('max_pop', f.max);
     else if (f.filter) q.set('resource', f.filter);
     let rows;
     try {
@@ -477,7 +599,7 @@ export async function render(el0, ctx, params) {
       let sub = '';
       if (r.kind === 'village') {
         title = r.name;
-        sub = `${r.player_name}${r.is_bot ? ' · bot' : ''}${r.is_ally ? ' · พันธมิตร' : ''}`;
+        sub = `${r.player_name} · ประชากร ${r.population ?? '-'}${r.is_bot ? ' · bot' : ''}${r.is_ally ? ' · พันธมิตร' : ''}${r.protected ? ' · 🛡 คุ้มครอง' : ''}`;
       } else if (r.kind === 'oasis') {
         iconName = r.oasis_type || 'oasis';
         title = `โอเอซิส${RES_LABEL[r.oasis_type] ?? ''} +25%`;
@@ -517,7 +639,7 @@ export async function render(el0, ctx, params) {
     { class: 'hud-pill map-legend' },
     ...Object.values(REL).map((r2) => h('span', { class: 'legend-item' }, h('i', { style: { background: r2.fill } }), r2.label)),
   );
-  const top = h('div', { class: 'hud-top map-top' }, h('div', { class: 'map-top-left' }, search, coordText), h('div', { class: 'map-top-right' }, findBtn, homeBtn, legend));
+  const top = h('div', { class: 'hud-top map-top' }, h('div', { class: 'map-top-left' }, search, coordText), h('div', { class: 'map-top-right' }, findBtn, h('a', { class: 'hud-pill', href: '#/farms' }, '⚔ รายการฟาร์ม'), homeBtn, legend));
   const zoomBox = h(
     'div',
     { class: 'hud-zoombox map-zoombox' },

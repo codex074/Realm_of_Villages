@@ -29,6 +29,7 @@ const ROUTES = [
   { pattern: ['login'], view: 'login' },
   { pattern: ['join'], view: 'join' },
   { pattern: ['alliance'], view: 'alliance' },
+  { pattern: ['farms'], view: 'farms' },
 ];
 
 // Views that work without a loaded game state (login, join and new-world forms).
@@ -228,6 +229,7 @@ async function refresh() {
       villageFetchedAtMs = gameNow().getTime();
     }
     updateTopbar();
+    loadIncoming();
     renderWhenIdle();
   } catch (err) {
     if (err instanceof ApiError) toast(err.message, true);
@@ -311,7 +313,39 @@ function tickResources() {
 // Tick the clock display once per second.
 function tickClock() {
   clockEl.textContent = state ? fmtTime(gameNow().toISOString()) : '';
+  updateAttackAlert();
 }
+
+// ---- Incoming attack alert ----
+
+const attackAlert = document.getElementById('attack-alert');
+let incoming = [];
+
+async function loadIncoming() {
+  if (!state) return;
+  try {
+    incoming = await api.get('/incoming');
+  } catch {
+    incoming = [];
+  }
+  updateAttackAlert();
+}
+
+function updateAttackAlert() {
+  const live = incoming.filter((m) => remainingMs(m.arrive_at) > 0);
+  attackAlert.hidden = live.length === 0;
+  if (!live.length) return;
+  const first = live[0];
+  attackAlert.textContent = `⚔ ถูกโจมตี ${live.length} · ${countdown(first.arrive_at)}`;
+  attackAlert.title = live
+    .map((m) => `${m.to_village_name}: ${m.mission === 'scout' ? 'สอดแนม' : m.mission === 'raid' ? 'ปล้น' : 'โจมตี'} จาก ${m.from.name} (${m.from.x}, ${m.from.y})`)
+    .join('\n');
+}
+
+attackAlert.addEventListener('click', () => {
+  const live = incoming.filter((m) => remainingMs(m.arrive_at) > 0);
+  if (live.length) navigate(`#/v/${live[0].to_village_id}`);
+});
 
 function updatePauseBtn() {
   document.getElementById('pause-label').textContent = state && state.paused ? 'เล่นต่อ' : 'หยุด';
@@ -511,6 +545,7 @@ async function init() {
   }
   syncClock(state.game_now);
   updateTopbar();
+  loadIncoming();
   await renderRoute();
 }
 
