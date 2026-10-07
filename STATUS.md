@@ -31,7 +31,7 @@
 | T15b | merged | 1 | Claude แก้คำไทย 3 จุด (มีย, สุม, เวลาถิง); โครงสร้างถูก |
 | T15c | merged | 1 | ผ่านรอบแรก ข้อความไทยถูกครบ; ทดสอบในเบราว์เซอร์จริง: ปล้นสำเร็จ (loot 500x4), รายงานสองฝ่าย, badge, แผงฝึกทหาร ทำงานถูก |
 | T16a | merged | 1 | Claude แก้บั๊กจริง: modules.raid อ่าน village.protection_until (ไม่มีคอลัมน์ ต้องเป็นของ Player) แต่ test ตั้ง attribute เองจึงผ่านทั้งที่ผิด |
-| T16b | todo | 0 | bot: brain + worker + cli bots + compose |
+| T16b | merged | 1 | ผ่านรอบแรก ไม่ต้องแก้ (wrapper หยุด exit 4 เพราะ Qwen เพิ่ม tests/bot/__init__.py กันชื่อ test_worker ซ้ำ ชอบธรรม; 320 tests ผ่าน) |
 | T17 | todo | 0 | simulator |
 | T08 | merged | 1 | Claude แก้ healthcheck (ขาด "CMD"); build+up จริงผ่าน: migrate, เว็บ/API/WS ผ่าน Caddy :8080, engine ทำงาน, backup.sh ใช้ได้ |
 
