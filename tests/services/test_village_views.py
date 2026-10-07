@@ -343,3 +343,40 @@ def test_slot_view_invalid_slot(s, cfg: GameConfig, t0) -> None:
         with pytest.raises(GameError) as ei:
             get_slot_view(s, player.id, village.id, bad, t0, cfg)
         assert ei.value.code == "INVALID_SLOT"
+
+
+def test_slot_view_field_production_table(s, cfg: GameConfig, t0) -> None:
+    """A field slot lists hourly output per level: 2 at level 0, 10 at level 1, x1.4 after."""
+    player, village = _make(s, cfg, t0)
+    view = get_slot_view(s, player.id, village.id, 1, t0, cfg)
+    prod = view.production
+    assert prod is not None
+    assert prod["resource"] == "wood"
+    assert prod["multiplier"] == 1.0
+    per_hour = {row["level"]: row["per_hour"] for row in prod["levels"]}
+    assert per_hour[0] == 2.0
+    assert per_hour[1] == 10.0
+    assert per_hour[2] == pytest.approx(14.0)
+    assert per_hour[5] == pytest.approx(10.0 * 1.4**4)
+    # the capital may reach level 15, so the table goes that far
+    assert max(per_hour) == 15
+    # town hall (not a field) has no production table
+    assert get_slot_view(s, player.id, village.id, 19, t0, cfg).production is None
+
+
+def test_slot_view_field_production_uses_speed_and_oasis(s, cfg: GameConfig, t0) -> None:
+    """The table is scaled by world speed, the player multiplier and owned oasis."""
+    from realm.db.models import Tile, World
+
+    player, village = _make(s, cfg, t0)
+    s.scalars(select(World)).one().speed = 5
+    player.production_mult = 1.2
+    oasis = s.scalars(select(Tile).where(Tile.oasis_type == "wood")).first()
+    if oasis is not None:
+        oasis.oasis_owner_village_id = village.id
+    s.flush()
+    view = get_slot_view(s, player.id, village.id, 1, t0, cfg)
+    expected = 5 * 1.2 * (1.0 + cfg.oasis.bonus * (1 if oasis is not None else 0))
+    assert view.production["multiplier"] == pytest.approx(expected)
+    level1 = next(r for r in view.production["levels"] if r["level"] == 1)
+    assert level1["per_hour"] == pytest.approx(10.0 * expected)

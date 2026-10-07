@@ -24,3 +24,9 @@ export function fmtTime(iso) {
   if (Number.isNaN(d.getTime())) return '';
   return d.toLocaleString('th-TH');
 }
+
+// Number with at most one decimal and grouped thousands (for hourly rates such as 19.6).
+export function fmtRate(n) {
+  const value = Math.round((Number(n) || 0) * 10) / 10;
+  return value.toLocaleString('en-US', { maximumFractionDigits: 1 });
+}

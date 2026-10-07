@@ -108,6 +108,7 @@ class SlotView(BaseModel):
     current: BuildingView | None
     upgrade: CostView | None
     options: list[dict]
+    production: dict | None = None
 
 
 class TrainOption(BaseModel):

@@ -1,9 +1,9 @@
 // Full-screen village scene with a HUD: name/queue pills, zoom buttons, and a drawer (queue, troops, movements, info).
 
 import { api, ApiError } from '../api.js';
-import { h, clear } from '../dom.js';
+import { h, clear, icon } from '../dom.js';
 import { countdown } from '../clock.js';
-import { fmtNum } from '../format.js';
+import { fmtNum, fmtRate, fmtDuration } from '../format.js';
 import { queuePanel } from './slotpanel.js';
 import { sceneFrame } from './scene.js';
 import { unitLabel, unitsLine } from '../units.js';
@@ -38,20 +38,33 @@ export function heading(ctx) {
   return h('div', { class: 'village-heading' }, nameEl, renameBtn);
 }
 
-// Production rates row; the food rate is .negative when below zero.
-function ratesRow(ctx) {
+// Per-resource production, storage and time until the store is full or empty.
+function productionPanel(ctx) {
   const v = ctx.village;
+  const speed = (ctx.state && ctx.state.speed) || 1;
+  const rows = RES_KEYS.map((k) => {
+    const rate = v.rates[k] ?? 0;
+    const have = v.resources[k] ?? 0;
+    const cap = v.capacity[k] ?? 0;
+    let note = '';
+    if (have >= cap) note = 'คลังเต็ม';
+    else if (rate > 0) note = `เต็มใน ${fmtDuration(((cap - have) / rate) * (3600 / speed))}`;
+    else if (rate < 0) note = `หมดใน ${fmtDuration((have / -rate) * (3600 / speed))}`;
+    return h(
+      'div',
+      { class: 'list-row prod-row' },
+      h('span', { class: 'unit-label' }, icon(k, 'ico unit-icon'), RES_LABELS[k]),
+      h('span', { class: rate < 0 ? 'negative' : '' }, `${rate >= 0 ? '+' : ''}${fmtRate(rate)} ต่อชม.`),
+      h('span', { class: 'muted' }, `${fmtNum(have)}/${fmtNum(cap)}`),
+      h('span', { class: 'muted' }, note),
+    );
+  });
   return h(
     'div',
-    { class: 'rates-row' },
-    'ผลิต/ชม.',
-    ...RES_KEYS.map((k) =>
-      h(
-        'span',
-        { class: 'rate' + (k === 'food' && (v.rates.food ?? 0) < 0 ? ' negative' : '') },
-        `${RES_LABELS[k]} ${fmtNum(v.rates[k] ?? 0)}`,
-      ),
-    ),
+    { class: 'panel' },
+    h('h2', { class: 'panel-heading' }, 'การผลิตทรัพยากร'),
+    ...rows,
+    h('div', { class: 'muted' }, 'อาหารหักค่ากินของประชากรและทหารแล้ว'),
   );
 }
 
@@ -116,7 +129,7 @@ function drawerBody(ctx, key) {
   if (key === 'queue') return [queuePanel(ctx)];
   if (key === 'troops') return [troopsPanel(ctx)];
   if (key === 'moves') return [movementsPanel(ctx)];
-  return [heading(ctx), ratesRow(ctx), cultureRow(ctx)];
+  return [heading(ctx), productionPanel(ctx), cultureRow(ctx)];
 }
 
 // Top-right pills describing the build queue (first two entries).

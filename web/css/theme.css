@@ -314,3 +314,11 @@ body.scene-page #view { padding: 0; min-height: 0; height: 0; }
 .scene-drawer .panel { box-shadow: none; margin-bottom: 8px; }
 .drawer-close { float: right; margin-left: 8px; }
 @media (min-width: 700px) { .scene-drawer { left: auto; width: 420px; right: 60px; } }
+
+/* ---------- production info ---------- */
+.production .prod-line { font-weight: 600; margin: 2px 0; }
+.prod-table { width: 100%; font-size: 13px; margin-top: 6px; }
+.prod-table th, .prod-table td { text-align: center; padding: 3px 4px; }
+.production details { margin-top: 6px; }
+.production summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+.prod-row { flex-wrap: wrap; gap: 4px 10px; }

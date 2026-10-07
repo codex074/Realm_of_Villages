@@ -3,7 +3,7 @@
 import { api, ApiError } from '../api.js';
 import { h, icon } from '../dom.js';
 import { countdown } from '../clock.js';
-import { fmtNum, fmtDuration } from '../format.js';
+import { fmtNum, fmtDuration, fmtRate } from '../format.js';
 import { unitLabel } from '../units.js';
 
 const RES_KEYS = ['wood', 'stone', 'iron', 'food'];
@@ -46,6 +46,40 @@ async function doBuild(btn, ctx, slot, type) {
     if (err instanceof ApiError) ctx.toast(err.message, true);
     btn.disabled = false;
   }
+}
+
+// Hourly output of a field: now, next level, and the table of every level.
+function productionBlock(prod, level) {
+  const rows = prod.levels;
+  const cur = rows.find((r) => r.level === level);
+  const next = rows.find((r) => r.level === level + 1);
+  const label = RES_LABELS[prod.resource] ?? prod.resource;
+  const box = h(
+    'div',
+    { class: 'slot-option production' },
+    h('div', { class: 'slot-option-name' }, h('span', { class: 'unit-label' }, icon(prod.resource, 'ico unit-icon'), `กำลังผลิต${label}`)),
+    h('div', { class: 'prod-line' }, `ตอนนี้ ${fmtRate(cur ? cur.per_hour : 0)} ต่อชม.`),
+    next
+      ? h('div', { class: 'prod-line' }, `เลเวล ${level + 1}: ${fmtRate(next.per_hour)} ต่อชม. (+${fmtRate(next.per_hour - (cur ? cur.per_hour : 0))})`)
+      : h('div', { class: 'muted' }, 'เลเวลสูงสุดแล้ว'),
+  );
+  if (prod.multiplier !== 1) {
+    box.append(h('div', { class: 'muted' }, `รวมตัวคูณความเร็วโลก/โบนัสแล้ว x${fmtRate(prod.multiplier)}`));
+  }
+  const table = h('table', { class: 'table prod-table' }, h('tr', {}, h('th', {}, 'เลเวล'), h('th', {}, 'ผลิต/ชม.'), h('th', {}, 'เพิ่มขึ้น')));
+  rows.forEach((r, i) => {
+    table.append(
+      h(
+        'tr',
+        { class: r.level === level ? 'me' : '' },
+        h('td', {}, String(r.level)),
+        h('td', {}, fmtRate(r.per_hour)),
+        h('td', {}, i === 0 ? '-' : `+${fmtRate(r.per_hour - rows[i - 1].per_hour)}`),
+      ),
+    );
+  });
+  box.append(h('details', {}, h('summary', {}, 'ตารางกำลังผลิตทุกเลเวล'), table));
+  return box;
 }
 
 // Build queue panel: heading, one row per queued entry with countdown, capacity text.
@@ -94,6 +128,7 @@ export async function openSlotPanel(el, ctx, slot) {
   if (underConstruction) {
     sheet.append(h('div', { class: 'muted' }, 'กำลังก่อสร้างอยู่'));
   }
+  if (view.production && view.current) sheet.append(productionBlock(view.production, view.current.level));
   if (view.upgrade) {
     const btn = h(
       'button',

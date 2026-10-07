@@ -550,7 +550,38 @@ def get_slot_view(
                     "affordable": stock.covers(cost) and not missing,
                 }
             )
-    return SlotView(slot=slot, current=current, upgrade=upgrade, options=options)
+    production = None
+    if row is not None and cfg.buildings[row.type].kind == "field":
+        production = field_production_view(s, village, player_id, row.type, world.speed, cfg)
+    return SlotView(
+        slot=slot, current=current, upgrade=upgrade, options=options, production=production
+    )
+
+
+def field_production_view(
+    s: Session, village: Village, player_id: int, btype: str, speed: int, cfg: GameConfig
+) -> dict:
+    """Hourly output of one field at every level, with the village's real multipliers."""
+    resource = cfg.buildings[btype].produces
+    player = s.get(Player, player_id)
+    oasis_count = (
+        s.scalar(
+            select(func.count(Tile.world_id)).where(
+                Tile.oasis_owner_village_id == village.id, Tile.oasis_type == resource
+            )
+        )
+        or 0
+    )
+    multiplier = speed * player.production_mult * (1.0 + cfg.oasis.bonus * oasis_count)
+    top = construction.max_level(btype, village.is_capital, cfg)
+    return {
+        "resource": resource,
+        "multiplier": multiplier,
+        "levels": [
+            {"level": lv, "per_hour": economy.field_production(lv, cfg) * multiplier}
+            for lv in range(0, top + 1)
+        ],
+    }
 
 
 STARVATION_KILLED_TH = "ทหารอดอาหารตาย"
