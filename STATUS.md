@@ -30,6 +30,9 @@
 | T15a | merged | 1 | ผ่านรอบแรก ไม่ต้องแก้ (277 tests) |
 | T15b | merged | 1 | Claude แก้คำไทย 3 จุด (มีย, สุม, เวลาถิง); โครงสร้างถูก |
 | T15c | merged | 1 | ผ่านรอบแรก ข้อความไทยถูกครบ; ทดสอบในเบราว์เซอร์จริง: ปล้นสำเร็จ (loot 500x4), รายงานสองฝ่าย, badge, แผงฝึกทหาร ทำงานถูก |
+| T16a | merged | 1 | Claude แก้บั๊กจริง: modules.raid อ่าน village.protection_until (ไม่มีคอลัมน์ ต้องเป็นของ Player) แต่ test ตั้ง attribute เองจึงผ่านทั้งที่ผิด |
+| T16b | todo | 0 | bot: brain + worker + cli bots + compose |
+| T17 | todo | 0 | simulator |
 | T08 | merged | 1 | Claude แก้ healthcheck (ขาด "CMD"); build+up จริงผ่าน: migrate, เว็บ/API/WS ผ่าน Caddy :8080, engine ทำงาน, backup.sh ใช้ได้ |
 
 สถานะที่ใช้: todo · delegated · in-review · merged · blocked · claude-fallback
@@ -45,6 +48,7 @@
 ## บทเรียนจาก Qwen (ใส่ใน notes ของ task ถัดไป)
 - ต้องเรียก Qwen ด้วย env สะอาด (wrapper ทำให้แล้ว) ไม่งั้น "Not logged in"
 - JSONB server_default ต้องเป็น text("'{}'::jsonb") ไม่ใช่สตริง "{}::jsonb" (Qwen พลาดใน T03a)
+- ระวัง: test ของ Qwen อาจ "ตั้ง attribute ที่ไม่มีใน model" แล้วผ่านทั้งที่ของจริงพัง (เจอใน T16a) -> ใส่ใน notes ให้ test ตั้งค่าผ่านคอลัมน์จริงเท่านั้น และรีวิวว่าฟิลด์ที่โค้ดอ่านมีใน models.py จริง
 - ระวัง: Qwen พิมพ์คำไทยผิดเหมือนกันทั้งในโค้ดและ test ทำให้ test ผ่านทั้งที่ผิด -> เพิ่ม KNOWN_BAD ใน check_thai.py และอ่านสตริงไทยทุกครั้ง
 - Qwen ลืม "CMD" ใน healthcheck.test ของ compose; test_cmd ที่ใช้ python ต้องเรียกผ่าน `uv run` (python3 ระบบเป็น 3.9 ไม่มี yaml)
 - Qwen ใส่ "บ่าน" แทน "บ้าน", "เปลี่ี่ยน", "ท่ี" ซ้ำๆ: ใส่ในโจทย์ให้คัดลอกสตริงไทยตามที่ระบุเป๊ะ และรัน scripts/check_thai.py + อ่านทวนทุกครั้ง
