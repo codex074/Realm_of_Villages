@@ -1,6 +1,5 @@
 """Event handlers executed by the engine worker (BUILD.md T05)."""
 
-import logging
 from collections.abc import Callable
 
 from sqlalchemy.orm import Session
@@ -8,9 +7,7 @@ from sqlalchemy.orm import Session
 from realm.core.config import GameConfig
 from realm.core.types import EventType
 from realm.db.models import Event
-from realm.services import military, training, villages
-
-logger = logging.getLogger("realm.engine")
+from realm.services import military, training, villages, worlds
 
 Handler = Callable[[Session, Event, GameConfig], None]
 
@@ -31,15 +28,17 @@ def handle_movement_arrive(s: Session, ev: Event, cfg: GameConfig) -> None:
 
 
 def handle_starvation_check(s: Session, ev: Event, cfg: GameConfig) -> None:
-    """Check a village for starvation; no-op placeholder, only logs at DEBUG."""
-    logger.debug(
-        "starvation check for village %s (not implemented yet)", ev.payload.get("village_id")
-    )
+    """Kill starving troops of a village at the event's due time (no-op when missing)."""
+    # Finalise the event first so after_change's cancel_pending (pending only)
+    # does not delete the row that is currently being processed.
+    ev.status = "done"
+    s.flush()
+    villages.handle_starvation(s, ev.payload["village_id"], ev.due_at, cfg)
 
 
 def handle_round_end(s: Session, ev: Event, cfg: GameConfig) -> None:
-    """End the world round (T14 not implemented yet)."""
-    raise NotImplementedError("T14 not implemented yet")
+    """End the world round at the event's due time (idempotent)."""
+    worlds.end_round(s, ev.world_id, ev.due_at, cfg)
 
 
 HANDLERS: dict[EventType, Handler] = {

@@ -1,5 +1,6 @@
 """Village commands: settle, rates, build, complete build, rename (BUILD.md 8.4)."""
 
+import math
 from datetime import datetime, timedelta
 
 from sqlalchemy import select
@@ -18,7 +19,7 @@ from realm.db.models import (
     Village,
     World,
 )
-from realm.services import events, notify
+from realm.services import events, notify, reports
 from realm.services.errors import (
     FORBIDDEN,
     INSUFFICIENT_RESOURCES,
@@ -469,3 +470,64 @@ def get_slot_view(
                 }
             )
     return SlotView(slot=slot, current=current, upgrade=upgrade, options=options)
+
+
+STARVATION_KILLED_TH = "ทหารอดอาหารตาย"
+_EPS = 1e-6
+
+
+def handle_starvation(s: Session, village_id: int, now: datetime, cfg: GameConfig) -> None:
+    """STARVATION_CHECK: kill the highest-upkeep troops until the food rate is non-negative."""
+    village = s.scalars(select(Village).where(Village.id == village_id).with_for_update()).first()
+    if village is None:
+        return
+    settle_village(s, village, now, cfg)
+    rates, _ = compute_rates(s, village, now, cfg)
+    if not (village.food <= _EPS and rates.food < 0):
+        after_change(s, village, now, cfg)
+        return
+    world = s.get(World, village.world_id)
+    candidates = list(
+        s.scalars(
+            select(Troop)
+            .where(Troop.home_village_id == village.id)
+            .order_by(
+                (Troop.location_village_id == village.id).desc(),
+                Troop.id,
+            )
+        ).all()
+    )
+    # At-home troops first; inside each group by upkeep desc (ties: unit key, row id).
+    candidates.sort(
+        key=lambda t: (t.location_village_id != village.id, -cfg.units[t.unit].upkeep, t.unit, t.id)
+    )
+    deficit = -rates.food
+    killed: dict[str, int] = {}
+    for t in candidates:
+        if deficit <= 1e-9:
+            break
+        per_unit = cfg.units[t.unit].upkeep * world.speed
+        k = min(t.count, math.ceil(deficit / per_unit))
+        t.count -= k
+        killed[t.unit] = killed.get(t.unit, 0) + k
+        deficit -= k * per_unit
+        if t.count <= 0:
+            s.delete(t)
+    s.flush()
+    if killed:
+        reports.create_report(
+            s,
+            village.player_id,
+            "info",
+            STARVATION_KILLED_TH,
+            {"village_id": village.id, "name": village.name, "killed": killed},
+            now,
+        )
+        notify.notify(s, village.world_id, [village.player_id], "village", village.id)
+    rates, _ = compute_rates(s, village, now, cfg)
+    if rates.food >= 0:
+        after_change(s, village, now, cfg)
+    else:
+        events.cancel_pending(
+            s, village.world_id, EventType.STARVATION_CHECK, {"village_id": village.id}
+        )

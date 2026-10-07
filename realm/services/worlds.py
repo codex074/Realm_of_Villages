@@ -13,7 +13,7 @@ from realm.core.names import BOT_NAMES
 from realm.core.slots import initial_buildings
 from realm.core.types import EventType
 from realm.db.models import BotProfile, Building, Player, Tile, Village, World
-from realm.services import events
+from realm.services import events, notify, ranking, reports
 from realm.services.errors import INVALID_TARGET, NOT_FOUND, GameError
 
 VALID_SPEEDS = (1, 3, 5, 10)
@@ -221,3 +221,35 @@ def resume(s: Session, real_now: datetime) -> World:
         world.paused_at = None
     s.flush()
     return world
+
+
+def end_round(s: Session, world_id: int, now: datetime, cfg: GameConfig) -> None:
+    """ROUND_END: crown the top-ranked player, end the world and report to every player."""
+    world = s.get(World, world_id)
+    if world is None or world.status != "running":
+        return
+    rows = ranking.get_ranking(s, world_id, cfg)
+    winner = rows[0]
+    world.status = "ended"
+    world.winner_player_id = winner.player_id
+    top = [row.model_dump(mode="json") for row in rows[:10]]
+    for row in rows:
+        reports.create_report(
+            s,
+            row.player_id,
+            "info",
+            f"จบรอบเกม ผู้ชนะคือ {winner.name}",
+            {
+                "winner": {
+                    "player_id": winner.player_id,
+                    "name": winner.name,
+                    "population": winner.population,
+                    "villages": winner.villages,
+                },
+                "top": top,
+                "your_rank": row.rank,
+            },
+            now,
+        )
+    notify.notify(s, world_id, [row.player_id for row in rows], "round_end")
+    s.flush()
