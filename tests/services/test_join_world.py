@@ -44,7 +44,7 @@ def test_join_creates_human_player_and_village(s, cfg, t0: datetime) -> None:
 
     village = s.get(Village, player.capital_village_id)
     assert village is not None
-    assert village.name == "บ้านของสอง"
+    assert village.name == "เมืองหลวงของสอง"
     assert village.is_capital is True
     assert village.wood == 750
     assert village.stone == 750

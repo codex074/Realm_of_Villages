@@ -89,7 +89,7 @@ def test_join_and_state_per_account(s: Session, monkeypatch: pytest.MonkeyPatch)
     body = resp.json()
     assert body["player"]["name"] == "สอง"
     assert body["player"]["tribe"] == "ironwild"
-    assert body["village"]["name"] == "บ้านของสอง"
+    assert body["village"]["name"] == "เมืองหลวงของสอง"
     assert isinstance(body["village"]["x"], int)
     assert isinstance(body["village"]["y"], int)
 

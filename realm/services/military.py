@@ -782,7 +782,7 @@ def _resolve_settle_arrival(
         village = Village(
             world_id=world.id,
             player_id=player.id,
-            name=f"บ้านของ{player.name} {owned + 1}",
+            name=f"เมืองของ{player.name} {owned + 1}",
             x=m.to_x,
             y=m.to_y,
             layout=tile.layout,

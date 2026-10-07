@@ -252,7 +252,7 @@ def test_settle_arrival_success(s, cfg: GameConfig, t0: datetime) -> None:
     assert new.player_id == player.id
     assert new.is_capital is False
     assert new.layout == "4-4-4-6"
-    assert new.name == "บ้านของผู้เล่น 2"
+    assert new.name == "เมืองของผู้เล่น 2"
     assert (new.wood, new.stone, new.iron, new.food) == (0.0, 0.0, 0.0, 0.0)
     assert new.res_updated_at == arrive
     assert new.created_at == arrive

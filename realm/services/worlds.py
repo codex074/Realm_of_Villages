@@ -124,7 +124,7 @@ def create_world(
         s,
         world.id,
         player.id,
-        f"บ้านของ{player_name}",
+        f"เมืองหลวงของ{player_name}",
         player_pos,
         tiles_by_pos,
         start,
@@ -317,7 +317,7 @@ def join_world(
     village = Village(
         world_id=world.id,
         player_id=player.id,
-        name=f"บ้านของ{name}",
+        name=f"เมืองหลวงของ{name}",
         x=tile.x,
         y=tile.y,
         layout=tile.layout,

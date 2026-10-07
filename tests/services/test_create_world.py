@@ -65,7 +65,7 @@ def test_create_world_full_state(s, cfg, t0: datetime) -> None:
     hv = by_player[human.id][0]
     assert hv.x == 0
     assert hv.y == 0
-    assert hv.name == "บ้านของผู้เล่น"
+    assert hv.name == "เมืองหลวงของผู้เล่น"
 
     tiles_by_pos = {(t.x, t.y): t for t in _tiles(s, world)}
     for v in villages:
