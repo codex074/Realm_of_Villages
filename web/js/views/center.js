@@ -1,17 +1,8 @@
-// Center view: the walled town zoomed in (slots 19-40), drawn by the scene module.
+// Center view: the walled town zoomed in (slots 19-40).
 
-import { h, clear } from '../dom.js';
-import { queuePanel } from './slotpanel.js';
-import { sceneFrame } from './scene.js';
-
-const HEADING = 'ใจกลางหมู่บ้าน';
+import { renderScenePage } from './hud.js';
 
 // Render the center page into el.
 export async function render(el, ctx) {
-  clear(el);
-  el.append(
-    h('h1', { class: 'village-name' }, HEADING),
-    sceneFrame(el, ctx, 'town'),
-    queuePanel(ctx),
-  );
+  return renderScenePage(el, ctx, 'town');
 }
