@@ -64,10 +64,12 @@ def test_max_level_capital_bonus():
 
 
 def test_queue_limit():
-    # second queue unlocks at town hall 10
-    assert queue_limit(9, cfg) == 1
-    assert queue_limit(10, cfg) == 2
-    assert queue_limit(20, cfg) == 2
+    # two builders from the start, a third at town hall 10
+    assert queue_limit(0, cfg) == 2
+    assert queue_limit(1, cfg) == 2
+    assert queue_limit(9, cfg) == 2
+    assert queue_limit(10, cfg) == 3
+    assert queue_limit(20, cfg) == 3
 
 
 def test_per_building_growth_overrides():

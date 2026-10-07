@@ -50,7 +50,8 @@ class ConstructionSection(_Model):
     cost_growth: float
     time_growth: float
     town_hall_time_factor: float
-    second_queue_town_hall_level: int
+    base_builders: int
+    extra_builder_town_hall_levels: list[int]
     training_building_factor: float
 
 

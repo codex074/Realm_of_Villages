@@ -102,9 +102,11 @@ def test_build_and_queue_full(s: Session) -> None:
     assert queue["target_level"] == 1
     assert queue["id"] > 0
 
-    again = client.post(f"/api/villages/{vid}/build", json={"slot": 1, "type": "woodcutter"})
-    assert again.status_code == 400
-    assert again.json()["error"]["code"] == "QUEUE_FULL"
+    second = client.post(f"/api/villages/{vid}/build", json={"slot": 2, "type": "woodcutter"})
+    assert second.status_code == 200
+    third = client.post(f"/api/villages/{vid}/build", json={"slot": 3, "type": "woodcutter"})
+    assert third.status_code == 400
+    assert third.json()["error"]["code"] == "QUEUE_FULL"
 
 
 def test_slot_view_after_build(s: Session) -> None:

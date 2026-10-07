@@ -32,7 +32,8 @@ construction:
   cost_growth: 1.28
   time_growth: 1.16
   town_hall_time_factor: 0.05     # time /= (1 + 0.05*(T-1))
-  second_queue_town_hall_level: 10
+  base_builders: 2                # ช่างก่อสร้างเริ่มต้นต่อหมู่บ้าน (สร้างพร้อมกันได้กี่อย่าง)
+  extra_builder_town_hall_levels: [10]   # ศาลากลางถึงเลเวลเหล่านี้ได้ช่างเพิ่มระดับละ 1 คน
   training_building_factor: 0.9   # train_time *= 0.9^(L-1) ของอาคารที่ฝึก
 
 combat:

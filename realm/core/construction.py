@@ -44,5 +44,8 @@ def missing_requirements(btype: str, levels: Mapping[str, int], cfg: GameConfig)
 
 
 def queue_limit(town_hall_level: int, cfg: GameConfig) -> int:
-    """Number of concurrent build slots (1, or 2 at high town hall level)."""
-    return 2 if town_hall_level >= cfg.construction.second_queue_town_hall_level else 1
+    """Number of builders = concurrent build orders: the base count plus one per reached level."""
+    extra = sum(
+        1 for lvl in cfg.construction.extra_builder_town_hall_levels if town_hall_level >= lvl
+    )
+    return cfg.construction.base_builders + extra

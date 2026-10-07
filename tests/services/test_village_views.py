@@ -89,7 +89,7 @@ def test_fresh_village_view(s, cfg: GameConfig, t0) -> None:
     assert v.rates == {"wood": 8.0, "stone": 8.0, "iron": 8.0, "food": 10.0}
     assert v.capacity == {"wood": 800.0, "stone": 800.0, "iron": 800.0, "food": 800.0}
     assert v.hidden == 0.0
-    assert v.queue_limit == 1
+    assert v.queue_limit == 2
     assert v.build_queue == []
     assert v.training == []
     assert v.movements == []

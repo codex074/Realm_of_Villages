@@ -262,7 +262,8 @@ construction:
   cost_growth: 1.28
   time_growth: 1.16
   town_hall_time_factor: 0.05     # time /= (1 + 0.05*(T-1))
-  second_queue_town_hall_level: 10
+  base_builders: 2                # ช่างก่อสร้างเริ่มต้นต่อหมู่บ้าน
+  extra_builder_town_hall_levels: [10]   # ศาลากลางถึงเลเวลนี้ได้ช่างเพิ่มระดับละ 1 คน
   training_building_factor: 0.9   # train_time *= 0.9^(L-1) ของอาคารที่ฝึก
 
 combat:
@@ -865,7 +866,7 @@ def build_time_s(btype: str, target_level: int, town_hall_level: int, speed: int
 def max_level(btype: str, is_capital: bool, cfg) -> int
 def missing_requirements(btype: str, levels: Mapping[str, int], cfg) -> list[str]
     # คืนรายการข้อความไทย เช่น ["ต้องมี ค่ายทหาร เลเวล 3"] ถ้าว่างแปลว่าผ่าน
-def queue_limit(town_hall_level: int, cfg) -> int      # 1 หรือ 2
+def queue_limit(town_hall_level: int, cfg) -> int      # ช่างก่อสร้าง: base_builders + 1 ต่อระดับที่ศาลากลางถึง (เริ่ม 2, เลเวล 10 = 3)
 ```
 
 `levels` = dict ของ `building_type -> level สูงสุดในหมู่บ้าน`
@@ -1435,7 +1436,7 @@ WebSocket `/ws`:
 **เกณฑ์เสร็จ**
 - สร้างโลก → หมู่บ้านมีทรัพยากรเริ่ม 750, town_hall เลเวล 1, ทุ่ง 18 ช่องเลเวล 0
 - `build` ทุ่ง slot 1 → ทรัพยากรลดตามราคา, มี build_queue 1 แถว, มี event BUILD_COMPLETE ที่เวลาถูก
-- สร้างแถวที่สองตอน town_hall < 10 → QUEUE_FULL
+- สร้างแถวที่สามตอน town_hall < 10 → QUEUE_FULL (มีช่าง 2 คน)
 - ทรัพยากรไม่พอ → INSUFFICIENT_RESOURCES; ขาดเงื่อนไข → REQUIREMENTS_NOT_MET; slot ผิดชนิด → INVALID_SLOT
 - `complete_build` → เลเวลขึ้น, rates ของ view เปลี่ยน, ทรัพยากร ณ เวลาเสร็จถูกต้อง (settle ก่อนเปลี่ยน)
 - ผู้เล่นอื่นสั่งหมู่บ้านเรา → FORBIDDEN

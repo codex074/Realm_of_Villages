@@ -95,17 +95,18 @@ def test_build_woodcutter_slot1(s, cfg: GameConfig, t0: datetime) -> None:
 
 
 def test_second_build_queue_full(s, cfg: GameConfig, t0: datetime) -> None:
-    """With town hall below 10 the queue holds one order; a second order is QUEUE_FULL."""
+    """With town hall below 10 there are two builders; a third order is QUEUE_FULL."""
     player, village = _make(s, cfg, t0)
     villages.build(s, player.id, village.id, 1, "woodcutter", t0, cfg)
+    villages.build(s, player.id, village.id, 2, "woodcutter", t0, cfg)
     with pytest.raises(GameError) as exc:
-        villages.build(s, player.id, village.id, 2, "woodcutter", t0, cfg)
+        villages.build(s, player.id, village.id, 3, "woodcutter", t0, cfg)
     assert exc.value.code == "QUEUE_FULL"
     # the same busy slot again is also rejected (QUEUE_FULL comes first)
     with pytest.raises(GameError) as exc2:
         villages.build(s, player.id, village.id, 1, "woodcutter", t0, cfg)
     assert exc2.value.code == "QUEUE_FULL"
-    assert len(s.scalars(select(BuildQueue)).all()) == 1
+    assert len(s.scalars(select(BuildQueue)).all()) == 2
 
 
 def test_build_insufficient_resources(s, cfg: GameConfig, t0: datetime) -> None:

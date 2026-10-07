@@ -68,9 +68,9 @@ def test_farmer_hard_executes_builds(s, cfg, t0: datetime) -> None:
     assert len(executed) >= 1
     assert len(executed) <= 6
     assert any(a.kind == "build" for a in executed)
-    # town_hall < 10 allows only one queued build; the rest fail with GameError.
+    # town_hall < 10 means two builders: at most two queued builds; the rest fail with GameError.
     queue = s.scalars(select(BuildQueue).where(BuildQueue.village_id == village.id)).all()
-    assert len(queue) == 1
+    assert 1 <= len(queue) <= 2
     # Stock decreased by exactly the sum of the executed build costs.
     spent = {"wood": 0.0, "stone": 0.0, "iron": 0.0, "food": 0.0}
     for a in executed:
