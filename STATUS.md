@@ -35,6 +35,12 @@
 | T17 | merged | 1 | Qwen เขียน simulator แต่ session ค้างเกิน 30 นาที (test ช้า ~114s/รอบ); Claude แก้เอง: brain ข้ามโมดูลสร้างเมื่อคิวเต็ม + cap ความล้มเหลวต่อชนิด (เร็วขึ้น 3 เท่า), บั๊ก KeyError spearman ใน modules.training ที่ simulator เจอ (678 ครั้ง), เรียง query ตาม slot/id ให้ deterministic, test ปรับเป็น speed 1 (7s) |
 | T20a | merged | 1 | logic ถูก; Qwen พิมพ์ข้อความไทยเดิมใน military.py เพี้ยนไปด้วย (บ่าน/น้ี/ตั้้ง ~15 จุด) Claude แก้ทั้งหมดแล้ว |
 | T20b | merged | 0 | Claude ทำเอง (แก้เล็ก 3 ไฟล์เว็บ); เพิ่ม config combat.conquest_loyalty สำหรับ T21 |
+| T21 | merged | 1 | ผ่านรอบแรก ไม่ต้องแก้; ข้อความไทยถูกครบเพราะให้ Qwen Edit จุดเล็ก + ไฟล์ใหม่ (conquest.py) แทนเขียนไฟล์ใหญ่ซ้ำ |
+| T22 | todo | 0 | unit upgrades (smithy): a=db+config+migration (Claude), b=services+combat, c=API+web |
+| T23 | todo | 0 | oasis |
+| T24 | todo | 0 | bots full |
+| T25 | todo | 0 | market |
+| T26 | todo | 0 | endgame |
 | T08 | merged | 1 | Claude แก้ healthcheck (ขาด "CMD"); build+up จริงผ่าน: migrate, เว็บ/API/WS ผ่าน Caddy :8080, engine ทำงาน, backup.sh ใช้ได้ |
 
 สถานะที่ใช้: todo · delegated · in-review · merged · blocked · claude-fallback
@@ -54,6 +60,7 @@
 - ระวัง: test ของ Qwen อาจ "ตั้ง attribute ที่ไม่มีใน model" แล้วผ่านทั้งที่ของจริงพัง (เจอใน T16a) -> ใส่ใน notes ให้ test ตั้งค่าผ่านคอลัมน์จริงเท่านั้น และรีวิวว่าฟิลด์ที่โค้ดอ่านมีใน models.py จริง
 - ระวัง: Qwen พิมพ์คำไทยผิดเหมือนกันทั้งในโค้ดและ test ทำให้ test ผ่านทั้งที่ผิด -> เพิ่ม KNOWN_BAD ใน check_thai.py และอ่านสตริงไทยทุกครั้ง
 - Qwen ลืม "CMD" ใน healthcheck.test ของ compose; test_cmd ที่ใช้ python ต้องเรียกผ่าน `uv run` (python3 ระบบเป็น 3.9 ไม่มี yaml)
+- วิธีกันข้อความไทยเพี้ยน: ให้ Qwen สร้างไฟล์ใหม่ และใช้ Edit จุดเล็กกับไฟล์เดิม ห้าม Write ทับไฟล์ที่มีสตริงไทย (ใช้ได้ผลใน T21)
 - Qwen ใส่ "บ่าน" แทน "บ้าน", "เปลี่ี่ยน", "ท่ี" ซ้ำๆ: ใส่ในโจทย์ให้คัดลอกสตริงไทยตามที่ระบุเป๊ะ และรัน scripts/check_thai.py + อ่านทวนทุกครั้ง
 - Qwen สลับ/พิมพ์ตัวอักษรไทยผิดได้ (เช่น "อับดับ" แทน "อันดับ") ที่ regex จับไม่ได้ ต้องอ่านสตริงไทยทุกตัวเอง
 - Qwen ชอบพิมพ์วรรณยุกต์/สระซ้ำในสตริงไทย (เช่น "น้ี", "แล้้ว") ตรวจด้วยสคริปต์ regex หลังทุก task (ดู scripts/check_thai.py)
