@@ -35,3 +35,9 @@ docker compose exec db psql -U realm -d realm -c "select a.username, l.method, l
 3. ใน `.env` ตั้ง `REALM_AUTH_REQUIRED=true` และ `REALM_COOKIE_SECURE=true`
 4. `docker compose --profile tunnel up -d --build`
 ตัวจำกัดอัตราอ่าน IP จริงจาก header `CF-Connecting-IP` และ Caddy เชื่อ header จาก proxy ในเครือข่ายภายใน
+
+## Deploy บน pve1 (LXC 103)
+อัปเดตเซิร์ฟเวอร์จริงด้วยคำสั่งเดียวจากเครื่อง dev: `./scripts/deploy.sh`
+(สำรอง DB → ส่งโค้ด → build → migrate → ตรวจสุขภาพ) โค้ดอยู่ที่ `/opt/realm-of-villages` ใน LXC 103,
+`.env` และ `cloudflared.env` อยู่เฉพาะบนเซิร์ฟเวอร์ ไม่ถูกทับ สำรองอัตโนมัติ 03:00 ทุกวัน (เก็บ 14 ชุดล่าสุด)
+กู้คืน: `gunzip -c backups/realm-<เวลา>.sql.gz | docker compose exec -T db psql -U realm realm`
