@@ -30,6 +30,7 @@ const ROUTES = [
   { pattern: ['join'], view: 'join' },
   { pattern: ['alliance'], view: 'alliance' },
   { pattern: ['farms'], view: 'farms' },
+  { pattern: ['admin'], view: 'admin' },
 ];
 
 // Views that work without a loaded game state (login, join and new-world forms).
@@ -43,6 +44,7 @@ const villageSelect = document.getElementById('village-select');
 const navLinks = Array.from(document.querySelectorAll('#bottomnav .nav-link'));
 const accountBox = document.getElementById('account-box');
 const accountName = document.getElementById('account-name');
+const adminLink = document.getElementById('admin-link');
 const logoutBtn = document.getElementById('logout-btn');
 const allianceLink = document.getElementById('nav-alliance');
 const toastEl = document.getElementById('toast');
@@ -492,6 +494,7 @@ function updateAccountUi() {
   const auth = !!(me && me.auth_required);
   accountBox.hidden = !(auth && me.account);
   accountName.textContent = me && me.account ? me.account.username : '';
+  adminLink.hidden = !(auth && me.account && me.account.is_admin);
   allianceLink.hidden = !(auth && me.account && state);
   // Only admins may pause in multiplayer mode.
   pauseBtn.hidden = auth && !(me.account && me.account.is_admin);
