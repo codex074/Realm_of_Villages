@@ -69,5 +69,17 @@ services:
       - api
     restart: unless-stopped
 
+  # Cloudflare tunnel (start with: docker compose --profile tunnel up -d).
+  # TUNNEL_TOKEN lives in cloudflared.env (not committed). In the Cloudflare dashboard
+  # point the tunnel's public hostname at http://caddy:80.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: ["tunnel", "--no-autoupdate", "run"]
+    env_file: cloudflared.env
+    profiles: ["tunnel"]
+    depends_on:
+      - caddy
+    restart: unless-stopped
+
 volumes:
   pgdata:

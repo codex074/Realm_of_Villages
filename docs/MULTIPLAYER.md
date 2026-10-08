@@ -28,3 +28,10 @@ docker compose exec db psql -U realm -d realm -c "select a.username, l.method, l
 
 ## สำรองข้อมูล
 `./scripts/backup.sh` สำรองทั้งฐานข้อมูล รวมบัญชี (รหัสผ่านเก็บเป็น scrypt hash) และพันธมิตร
+
+## Cloudflare Tunnel (เข้าจากอินเทอร์เน็ตโดยไม่เปิดพอร์ต)
+1. สร้าง tunnel ใน Cloudflare Zero Trust แล้วตั้ง Public Hostname (เช่น `rov.example.com`) ชี้ไป `http://caddy:80`
+2. ใส่ token ใน `cloudflared.env` (ไฟล์นี้ไม่เข้า git): `TUNNEL_TOKEN=<token>`
+3. ใน `.env` ตั้ง `REALM_AUTH_REQUIRED=true` และ `REALM_COOKIE_SECURE=true`
+4. `docker compose --profile tunnel up -d --build`
+ตัวจำกัดอัตราอ่าน IP จริงจาก header `CF-Connecting-IP` และ Caddy เชื่อ header จาก proxy ในเครือข่ายภายใน

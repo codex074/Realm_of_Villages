@@ -86,7 +86,10 @@ duplicates = DuplicateGuard()
 
 
 def _ip_key(request: Request) -> str:
-    """Return the ip-based key: first X-Forwarded-For hop (set by Caddy), else the peer address."""
+    """IP key: Cloudflare's CF-Connecting-IP, else first X-Forwarded-For hop, else the peer."""
+    cf_ip = request.headers.get("cf-connecting-ip")
+    if cf_ip:
+        return "ip:" + cf_ip.strip()
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
         return "ip:" + forwarded.split(",")[0].strip()

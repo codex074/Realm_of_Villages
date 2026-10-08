@@ -195,3 +195,19 @@ def test_no_guard_when_auth_not_required(monkeypatch: pytest.MonkeyPatch) -> Non
         resp = client.post("/api/_echo", content=body)
         assert resp.status_code == 200
     assert calls == []
+
+
+def test_ip_key_prefers_cloudflare_header() -> None:
+    """The rate-limit IP key uses CF-Connecting-IP, then the first X-Forwarded-For hop."""
+    from starlette.requests import Request
+
+    def req(headers: dict[str, str]) -> Request:
+        raw = [(k.lower().encode(), v.encode()) for k, v in headers.items()]
+        return Request({"type": "http", "headers": raw, "client": ("10.0.0.5", 1234)})
+
+    assert (
+        guard._ip_key(req({"cf-connecting-ip": "1.2.3.4", "x-forwarded-for": "9.9.9.9"}))
+        == "ip:1.2.3.4"
+    )
+    assert guard._ip_key(req({"x-forwarded-for": "5.6.7.8, 10.0.0.2"})) == "ip:5.6.7.8"
+    assert guard._ip_key(req({})) == "ip:10.0.0.5"

@@ -9,3 +9,4 @@ __pycache__/
 backups/
 .DS_Store
 *.egg-info/
+cloudflared.env
