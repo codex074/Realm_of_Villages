@@ -107,3 +107,17 @@ def test_logout_invalidates_token(s, t0: datetime) -> None:
     accounts.logout(s, token)
     assert accounts.account_for_token(s, token, t0) is None
     accounts.logout(s, "never-existed")
+
+
+def test_disabled_account_cannot_login_or_use_token(s, t0) -> None:
+    """A disabled account is refused at login and its existing tokens stop working."""
+    acc = accounts.register(s, "member1", "password123", t0)
+    token, _ = accounts.login(s, "member1", "password123", t0, 24)
+    assert accounts.account_for_token(s, token, t0) is not None
+    acc.is_disabled = True
+    s.flush()
+    assert accounts.account_for_token(s, token, t0) is None
+    with pytest.raises(GameError) as exc:
+        accounts.login(s, "member1", "password123", t0, 24)
+    assert exc.value.code == "UNAUTHENTICATED"
+    assert exc.value.message == "บัญชีนี้ถูกระงับ"

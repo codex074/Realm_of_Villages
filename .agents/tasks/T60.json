@@ -1,0 +1,27 @@
+{
+  "id": "T60",
+  "spec": [],
+  "title": "admin member management: list/reset password/admin flag/disable/audit",
+  "read": [
+    "realm/db/models.py",
+    "realm/services/accounts.py",
+    "realm/services/alliances.py",
+    "realm/services/errors.py",
+    "realm/api/deps.py",
+    "realm/api/main.py",
+    "realm/api/routes/admin.py",
+    "realm/api/routes/auth.py",
+    "tests/api/test_api_auth.py",
+    "tests/api/test_api_join.py"
+  ],
+  "write": [
+    "realm/services/members.py",
+    "realm/api/routes/members.py",
+    "realm/api/main.py",
+    "tests/services/test_members.py",
+    "tests/api/test_api_members.py"
+  ],
+  "test_cmd": "uv run pytest tests/services/test_members.py tests/api/test_api_members.py tests/api/test_api_join.py tests/services/test_accounts.py -q",
+  "criteria": "NEW realm/services/members.py and NEW realm/api/routes/members.py (include in realm/api/main.py with prefix '/api' via one small Edit). Column Account.is_disabled already exists; accounts.login/account_for_token already refuse disabled accounts.\nService (all take the session `s`, never commit, never call datetime.now):\n`list_members(s, cfg) -> list[dict]` ordered by account id: {'id','username','is_admin','is_disabled','created_at','last_seen' (max AuditLog.created_at of that account_id or None),'player': None or {'id','name','tribe','villages' (count),'population' (realm.core.economy.population over the player's Building rows (type, level) pairs)},'alliance': name or None}; the player is the account's Player in the NEWEST World (None when no world or none); alliance via realm.services.alliances.alliance_names(s, world_id). Avoid one query per row for buildings: load all buildings of the world's villages in one query.\n`set_password(s, actor_id, target_id, new_password) -> None`: target must exist (GameError NOT_FOUND 'ไม่พบบัญชี'); new_password length >= accounts.MIN_PASSWORD_LEN else INVALID_TARGET with accounts.PASSWORD_SHORT_TH; stores accounts.hash_password(new_password); deletes ALL AuthSession rows of the target (forces re-login) unless target_id == actor_id (then keep sessions).\n`set_admin(s, actor_id, target_id, value: bool) -> None`: NOT_FOUND 'ไม่พบบัญชี'; target_id == actor_id -> FORBIDDEN 'แก้ไขสิทธิ์ตัวเองไม่ได้'; removing admin from the last remaining admin -> INVALID_TARGET 'ต้องมีผู้ดูแลอย่างน้อยหนึ่งคน'; sets is_admin.\n`set_disabled(s, actor_id, target_id, value: bool) -> None`: NOT_FOUND 'ไม่พบบัญชี'; target_id == actor_id -> FORBIDDEN 'แก้ไขสิทธิ์ตัวเองไม่ได้'; disabling an admin -> INVALID_TARGET 'ระงับผู้ดูแลไม่ได้ ต้องถอดสิทธิ์ก่อน'; sets is_disabled and, when disabling, deletes all AuthSession rows of the target.\n`audit_trail(s, target_id, limit=50) -> list[dict]`: NOT_FOUND 'ไม่พบบัญชี'; newest first (id desc), limit clamped to 1..200: [{'id','method','path','status','created_at','player_id'}].\nRoutes (all require an admin: use `from realm.api.routes.admin import _require_admin` with deps.get_account, and when settings.auth_required is False raise GameError INVALID_TARGET 'โหมดบัญชีปิดอยู่'): GET /admin/members -> list_members(s, cfg); POST /admin/members/{id}/password body {password}; POST /admin/members/{id}/admin body {value: bool}; POST /admin/members/{id}/disabled body {value: bool}; GET /admin/members/{id}/audit?limit=50. Mutations return {'ok': True}. Body models are defined inside routes/members.py. Statuses come from the existing GameError map (FORBIDDEN 403, NOT_FOUND 404, UNAUTHENTICATED 401, INVALID_TARGET 400).\nTests: services: list_members shape with a world made by worlds.create_world (the human player linked to an account by setting player.account_id) incl. villages=1/population>0/alliance None, last_seen None then set after inserting an AuditLog row, an account without player has player None; set_password (hash changes, short password rejected, target's sessions deleted but not the actor's own), set_admin (promote, demote another admin, self FORBIDDEN, last admin rejected: create admin A and non-admin B, promote B, then demote A as B ok, then B cannot be demoted by itself), set_disabled (sessions deleted, login refused afterwards with accounts.login, self FORBIDDEN, admin target rejected, re-enable works), audit_trail order and limit. API (TestClient + dependency_overrides[get_session] -> rollback `s`; monkeypatch settings.auth_required True; register accounts through POST /api/auth/register; first account is admin): 401 without cookie, 403 for a non-admin cookie, 200 shapes for admin on all five routes, 404 for unknown id, and a disabled member's cookie stops working for GET /api/auth/me (account None).",
+  "notes": "- Thai strings: use ONLY the exact strings quoted above (copy letter by letter, proofread; Qwen often doubles tone marks); reuse existing constants for the rest.\n- Never commit; never call datetime.now() in services; run only the test_cmd files.\n- Real columns only in tests (check realm/db/models.py). Tests use fixtures `s`, `cfg`, `t0`; API tests: copy the fixture/helper pattern from tests/api/test_api_auth.py (make_client/register).\n- Existing files with Thai: small targeted Edit only."
+}

@@ -20,6 +20,7 @@ USERNAME_INVALID_TH = "ชื่อผู้ใช้ไม่ถูกต้อ
 PASSWORD_SHORT_TH = "รหัสผ่านสั้นเกินไป"
 USERNAME_TAKEN_TH = "ชื่อผู้ใช้นี้ถูกใช้แล้ว"
 BAD_CREDENTIALS_TH = "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"
+DISABLED_TH = "บัญชีนี้ถูกระงับ"
 
 
 def _token_hash(token: str) -> str:
@@ -79,6 +80,8 @@ def login(
     ).first()
     if account is None or not verify_password(password, account.password_hash):
         raise GameError(UNAUTHENTICATED, BAD_CREDENTIALS_TH)
+    if account.is_disabled:
+        raise GameError(UNAUTHENTICATED, DISABLED_TH)
     token = secrets.token_urlsafe(32)
     s.add(
         AuthSession(
@@ -109,7 +112,10 @@ def account_for_token(s: Session, token: str, now: datetime) -> Account | None:
         s.delete(session)
         s.flush()
         return None
-    return s.get(Account, session.account_id)
+    account = s.get(Account, session.account_id)
+    if account is None or account.is_disabled:
+        return None
+    return account
 
 
 def player_for_account(s: Session, account: Account) -> Player | None:

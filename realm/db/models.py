@@ -259,6 +259,7 @@ class Account(Base):
     username: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
     is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    is_disabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
